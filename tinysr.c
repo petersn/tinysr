@@ -1,4 +1,7 @@
-// TinySR.
+// TinySR
+// Written by Peter Schmidt-Nielsen (snp@mit.edu) starting in 2014.
+// The entire project is placed in the public domain.
+//
 // Implements ES 201 108 feature extraction.
 
 #include "tinysr.h"

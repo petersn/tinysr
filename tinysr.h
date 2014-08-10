@@ -1,4 +1,6 @@
 // TinySR
+// Written by Peter Schmidt-Nielsen (snp@mit.edu) starting in 2014.
+// The entire project is placed in the public domain.
 
 #ifndef TinySR_HEADER_H
 #define TinySR_HEADER_H

@@ -5,7 +5,7 @@ Compute the bin indices, as required by ES 201 108 4.2.9.
 
 import math
 
-# These functions are 
+# These functions are as defined in the spec.
 
 def Mel(x):
 	return 2595 * math.log(1 + x/700.0, 10)
