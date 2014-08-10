@@ -12,3 +12,8 @@ Currently the recognition pipeline looks like:
 * Gaussian mixture models. (Unimplemented.)
 * HMM with dynamic programming trellis decoder. (Unimplemented.)
 
+The code is divided into the following directories:
+* `apps`: Contains programs that link against `tinysr.o`. The makefile is set up to automatically compile anything `*.c` in `apps` against `tinysr.o`.
+* `playground`: Contains non-critical throw-away programs that were written in the course of creating TinySR.
+* `scripts`: Contains utility scripts, such as for speaker training, or computing important tables of constants.
+
