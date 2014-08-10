@@ -132,7 +132,7 @@ void tinysr_process_frame(tinysr_ctx_t* ctx) {
 	// Copy over the frame from the circular buffer into temp_buffer.
 	// Currently the frame could be laid out in input_buffer like:
 	// [ 6 7 8 9 0 1 2 3 4 5 ]
-    //           ^ input_buffer_next
+	//           ^ input_buffer_next
 	// We straighten out this circular representation into temp_buffer.
 	// Completing ES 201 108 4.2.4.
 	int index = ctx->input_buffer_next;
