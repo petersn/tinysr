@@ -20,13 +20,12 @@ int main(int argc, char** argv) {
 	printf("Allocating context.\n");
 	tinysr_ctx_t* ctx = tinysr_allocate_context();
 	// Set the framerate of the input audio we're passing it.
-	// Setting it to the native 16 kHz that is used for recognition
-	// causes no filtering to occur.
-	ctx->input_sample_rate = 16000;
-	samp_t frame[400];
-	for (i = 0; i < 400; i++)
-		frame[i] = i + (int) (40 * cosf(i/2.0));
-	tinysr_feed_input(ctx, frame, 400);
+	// Choosing a funky value, just for fun.
+	ctx->input_sample_rate = 7357;
+	samp_t frame[500];
+	for (i = 0; i < 500; i++)
+		frame[i] = i + (int) (40 * cosf(i/0.6));
+	tinysr_feed_input(ctx, frame, 500);
 	tinysr_recognize_frames(ctx);
 	printf("Freeing context.\n");
 	tinysr_free_context(ctx);

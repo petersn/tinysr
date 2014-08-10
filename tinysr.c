@@ -17,10 +17,15 @@
 
 void list_push(list_t* list, void* datum) {
 	list->length++;
-	list->tail = malloc(sizeof(list_node_t));
-	list->tail->datum = datum;
-	list->tail->prev = list->tail;
-	list->tail->next = NULL;
+	// Create the new list node, and fill out its entries.
+	list_node_t* tail = malloc(sizeof(list_node_t));
+	tail->datum = datum;
+	tail->prev = list->tail;
+	tail->next = NULL;
+	// Link it into the list.
+	if (list->tail != NULL)
+		list->tail->next = tail;
+	list->tail = tail;
 	if (list->head == NULL)
 		list->head = list->tail;
 }
@@ -29,11 +34,12 @@ void* list_pop(list_t* list) {
 	if (list->head == NULL)
 		return NULL;
 	list->length--;
+	// Find the head node.
 	list_node_t* head = list->head;
 	void* result = head->datum;
 	list->head = head->next;
 	free(head);
-	if (list->head) list->head->prev = NULL;
+	if (list->head != NULL) list->head->prev = NULL;
 	else list->tail = NULL;
 	return result;
 }
