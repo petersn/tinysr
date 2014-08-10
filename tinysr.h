@@ -2,8 +2,12 @@
 // Written by Peter Schmidt-Nielsen (snp@mit.edu) starting in 2014.
 // The entire project is placed in the public domain.
 
-#ifndef TinySR_HEADER_H
-#define TinySR_HEADER_H
+#ifndef TinySR_H
+#define TinySR_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include <math.h>
 #include <stdlib.h>
@@ -79,4 +83,9 @@ void tinysr_process_frame(tinysr_ctx_t* ctx);
 void tinysr_fft_dit(float* in_real, float* in_imag, int length, int stride, float* out_real, float* out_imag);
 void tinysr_abs_fft(float* array, int length);
 
+#ifdef __cplusplus
+}
 #endif
+
+#endif
+
