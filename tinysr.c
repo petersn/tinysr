@@ -47,6 +47,7 @@ void* list_pop(list_t* list) {
 // Allocate a context for speech recognition.
 tinysr_ctx_t* tinysr_allocate_context(void) {
 	tinysr_ctx_t* ctx = malloc(sizeof(tinysr_ctx_t));
+	ctx->processed_samples = 0;
 	// Initialize the resampling filter.
 	ctx->resampling_prev_raw_sample = 0.0;
 	ctx->resampling_time_delta = 0.0;
@@ -85,6 +86,7 @@ void tinysr_feed_input(tinysr_ctx_t* ctx, samp_t* samples, int length) {
 	while (length--) {
 		// Read one sample in.
 		float raw_sample = (float)*samples++;
+		ctx->processed_samples++;
 		// Now we apply the resampling filter, resampling from ctx->input_sample_rate to 16000 samples per second.
 		while (ctx->resampling_time_delta <= 1.0) {
 			// Linearly interpolate the current sample.
@@ -223,7 +225,7 @@ void tinysr_fft_dit(float* in_real, float* in_imag, int length, int stride, floa
 	int k;
 	for (k = 0; k < length/2; k++) {
 		float angle = -PI2 * k / (float)length;
-		// TODO, if FFTs become limiting: precompute these trig coefficients, and reuse them throughout the computation.
+		// TODO, if FFTs become limiting: precompute these trig coefficients, and reuse them.
 		float coef_real = cosf(angle), coef_imag = sinf(angle);
 		out_real[k]          = even_real[k] + coef_real * odd_real[k] - coef_imag * odd_imag[k];
 		out_imag[k]          = even_imag[k] + coef_real * odd_imag[k] + coef_imag * odd_real[k];

@@ -1,12 +1,15 @@
 
-CFLAGS=-O3 -ffast-math -Wall -g -lm
+CFLAGS=-O3 -ffast-math -Wall -g -lm -I.
 
-all: test_tinysr
+APP_SOURCES := $(wildcard apps/*.c)
+APPS := $(patsubst %.c,%.app,$(APP_SOURCES))
 
-test_tinysr: test_tinysr.o tinysr.o
+all: $(APPS)
+
+%.app: %.c tinysr.o
 	gcc $(CFLAGS) -o $@ $< tinysr.o
 
 .PHONY: clean
 clean:
-	rm -f test_tinysr *.o
+	rm -f *.o
 

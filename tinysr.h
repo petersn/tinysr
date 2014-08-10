@@ -18,7 +18,7 @@ extern "C" {
 #define FRAME_LENGTH 400
 #define SHIFT_INTERVAL 160
 
-typedef int64_t samp_t;
+typedef int16_t samp_t;
 
 // Generic singly linked list based stack.
 typedef struct _list_node_t {
@@ -46,6 +46,7 @@ typedef struct {
 	int input_sample_rate;
 
 	// Private:
+	int processed_samples;
 	float resampling_prev_raw_sample;
 	float resampling_time_delta;
 	float offset_comp_prev_in;
