@@ -166,7 +166,7 @@ void tinysr_process_frame(tinysr_ctx_t* ctx) {
 	// Compute the triangular filter bank, a.k.a. Mel filtering. (ES 201 108 4.2.9)
 	float filter_bank[23];
 	// This next line has data computed by scripts/compute_mel_bins.py, assuming 512 FFT bins, and 16 kHz sampling rate.
-	// If these assumptions change, rerung that script to figure out what these bins should be!
+	// If these assumptions change, rerun that script to figure out what these bins should be!
 	int cbin[25] = {2, 5, 8, 11, 14, 18, 23, 27, 33, 38, 45, 52, 60, 69, 79, 89, 101, 115, 129, 145, 163, 183, 205, 229, 256};
 	// XXX: Note! ES 201 108 has fbank (corresponding to our filter_bank) being one indexed, but I have it zero indexed.
 	// Thus, note that cbin[k+1] is the center bin index for filter_bank[k]. This is why cbin is of length 25. 
