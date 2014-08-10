@@ -41,8 +41,11 @@ void* list_pop(list_t* list) {
 // Allocate a context for speech recognition.
 tinysr_ctx_t* tinysr_allocate_context(void) {
 	tinysr_ctx_t* ctx = malloc(sizeof(tinysr_ctx_t));
+	// Initialize the resampling filter.
+	ctx->resampling_prev_raw_sample = 0.0;
+	ctx->resampling_time_delta = 0.0;
 	// By default, assume 48000 frames per second of input.
-	ctx->input_framerate = 48000;
+	ctx->input_sample_rate = 48000;
 	// Offset compensation running values.
 	ctx->offset_comp_prev_in = 0.0;
 	ctx->offset_comp_prev_out = 0.0;
@@ -63,6 +66,9 @@ tinysr_ctx_t* tinysr_allocate_context(void) {
 void tinysr_free_context(tinysr_ctx_t* ctx) {
 	free(ctx->input_buffer);
 	free(ctx->temp_buffer);
+	// Free any feature vectors that happen to be allocated at the time.
+	while (ctx->fv_list.length)
+		free(list_pop(&ctx->fv_list));
 	free(ctx);
 }
 
@@ -70,20 +76,30 @@ void tinysr_free_context(tinysr_ctx_t* ctx) {
 // Performs speech recognition immediately, as frames become complete.
 void tinysr_feed_input(tinysr_ctx_t* ctx, samp_t* samples, int length) {
 	while (length--) {
-		// Read one sample into our input buffer.
-		float sample_in = (float)*samples++;
-		// Perform offset compensation (ES 201 108 4.2.3)
-		float sample_out = sample_in - ctx->offset_comp_prev_in + 0.999 * ctx->offset_comp_prev_out;
-		ctx->offset_comp_prev_in = sample_in;
-		ctx->offset_comp_prev_out = sample_out;
-		// Store the sample into the circular buffer.
-		ctx->input_buffer[ctx->input_buffer_next++] = sample_out;
-		ctx->input_buffer_next %= FRAME_LENGTH;
-		// Check if this completes a frame. (ES 201 108 4.2.4)
-		if (++ctx->input_buffer_samps == FRAME_LENGTH) {
-			tinysr_process_frame(ctx);
-			ctx->input_buffer_samps -= SHIFT_INTERVAL;
+		// Read one sample in.
+		float raw_sample = (float)*samples++;
+		// Now we apply the resampling filter, resampling from ctx->input_sample_rate to 16000 samples per second.
+		while (ctx->resampling_time_delta <= 1.0) {
+			// Linearly interpolate the current sample.
+			float sample_in = (1 - ctx->resampling_time_delta) * ctx->resampling_prev_raw_sample + ctx->resampling_time_delta * raw_sample;
+			// Perform offset compensation (ES 201 108 4.2.3)
+			float sample_out = sample_in - ctx->offset_comp_prev_in + 0.999 * ctx->offset_comp_prev_out;
+			ctx->offset_comp_prev_in = sample_in;
+			ctx->offset_comp_prev_out = sample_out;
+			// Store the sample into the circular buffer.
+			ctx->input_buffer[ctx->input_buffer_next++] = sample_out;
+			ctx->input_buffer_next %= FRAME_LENGTH;
+			// Check if this completes a frame. (ES 201 108 4.2.4)
+			if (++ctx->input_buffer_samps == FRAME_LENGTH) {
+				tinysr_process_frame(ctx);
+				ctx->input_buffer_samps -= SHIFT_INTERVAL;
+			}
+			// Advance our time estimate by the appropriate amount.
+			ctx->resampling_time_delta += ctx->input_sample_rate / 16000.0;
 		}
+		// Store the current sample, for linear interpolation next time around.
+		ctx->resampling_prev_raw_sample = raw_sample;
+		ctx->resampling_time_delta -= 1;
 	}
 }
 

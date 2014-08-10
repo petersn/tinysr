@@ -37,9 +37,13 @@ void* list_pop(list_t* list);
 // TinySR context, and associated functions.
 typedef struct {
 	// Public configuration:
-	int input_framerate;
+	// The sample rate you are feeding the recognizer.
+	// It is safe to change this as frequently as you want.
+	int input_sample_rate;
 
 	// Private:
+	float resampling_prev_raw_sample;
+	float resampling_time_delta;
 	float offset_comp_prev_in;
 	float offset_comp_prev_out;
 	float* input_buffer;

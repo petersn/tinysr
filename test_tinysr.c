@@ -22,7 +22,7 @@ int main(int argc, char** argv) {
 	// Set the framerate of the input audio we're passing it.
 	// Setting it to the native 16 kHz that is used for recognition
 	// causes no filtering to occur.
-	ctx->input_framerate = 16000;
+	ctx->input_sample_rate = 16000;
 	samp_t frame[400];
 	for (i = 0; i < 400; i++)
 		frame[i] = i + (int) (40 * cosf(i/2.0));
