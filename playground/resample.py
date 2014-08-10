@@ -1,7 +1,6 @@
 #! /usr/bin/python
 # Quick testing code to determine if I'm happy with linear interpolation for audio filtering.
 # My tests say, probably yes. The results sound quite reasonable.
-# To convince yourself
 
 import math, wave, struct, sys
 
@@ -10,7 +9,7 @@ def resample(a, old_rate, new_rate):
 	print "Resampling from %i Hz to %i Hz" % (old_rate, new_rate)
 	new_length = (len(a) * float(new_rate)) / old_rate
 	# Prevent some overflow issues.
-	a = list(a) + a[-1]
+	a = list(a) + [a[-1]]
 	b = []
 	for i in xrange(int(new_length)):
 		index = i * (old_rate / float(new_rate))
