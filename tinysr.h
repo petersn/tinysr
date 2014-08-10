@@ -14,11 +14,25 @@
 
 typedef int64_t samp_t;
 
-typedef struct _frame_list_t {
-	float* frame;
-	struct _frame_list_t* next;
-} frame_list_t;
+// Generic singly linked list based stack.
+typedef struct _list_node_t {
+	void* datum;
+	struct _list_node_t* prev;
+	struct _list_node_t* next;
+} list_node_t;
 
+// Simply set each field to zero initially to make an empty list.
+// Thus, list_t l = {0}; suffices for initializiation.
+typedef struct {
+	int length;
+	list_node_t* head;
+	list_node_t* tail;
+} list_t;
+
+void list_push(list_t* list, void* datum);
+void* list_pop(list_t* list);
+
+// TinySR context, and associated functions.
 typedef struct {
 	// Public configuration:
 	int input_framerate;
@@ -30,17 +44,24 @@ typedef struct {
 	int input_buffer_next;
 	int input_buffer_samps;
 	float* temp_buffer;
-	float* windowing_buffer;
-	frame_list_t* frame_list_head;
-	frame_list_t* frame_list_tail;
+	// Feature vector list.
+	list_t fv_list;
 } tinysr_ctx_t;
 
+typedef struct {
+	float log_energy;
+	float cepstrum[13];
+} feature_vector_t;
+
 // Call to get/free a context.
-tinysr_ctx_t* tinysr_allocate_ctx(void);
-void tinysr_free_ctx(tinysr_ctx_t* ctx);
+tinysr_ctx_t* tinysr_allocate_context(void);
+void tinysr_free_context(tinysr_ctx_t* ctx);
 
 // Call to pass input samples.
-void tinysr_feed_input(tinysr_ctx_t* ctx, int length, samp_t* samples);
+void tinysr_feed_input(tinysr_ctx_t* ctx, samp_t* samples, int length);
+
+// Call to trigger the big expensive recognition operation.
+void tinysr_recognize_frames(tinysr_ctx_t* ctx);
 
 // Private functions.
 // Initiates a feature extraction run on the contents of input_buffer.
