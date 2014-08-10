@@ -50,7 +50,7 @@ tinysr_ctx_t* tinysr_allocate_context(void) {
 	// Initialize the resampling filter.
 	ctx->resampling_prev_raw_sample = 0.0;
 	ctx->resampling_time_delta = 0.0;
-	// By default, assume 48000 frames per second of input.
+	// By default, assume the input is at 48000 samples per second.
 	ctx->input_sample_rate = 48000;
 	// Offset compensation running values.
 	ctx->offset_comp_prev_in = 0.0;
@@ -62,8 +62,9 @@ tinysr_ctx_t* tinysr_allocate_context(void) {
 	// How many samples are currently in input_buffer.
 	ctx->input_buffer_samps = 0;
 	// Allocate a temporary buffer for processing.
+	// The entire feature extraction takes place in ths buffer, so we make it long enough to do an FFT in.
 	ctx->temp_buffer = malloc(sizeof(float) * FFT_LENGTH);
-	// The features vector list is initially empty.
+	// The features vector list: whenever a frame of input is processed, the resultant features go in here.
 	ctx->fv_list = (list_t){0};
 	return ctx;
 }
