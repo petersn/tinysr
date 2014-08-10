@@ -5,6 +5,7 @@
 // Implements ES 201 108 feature extraction.
 
 #include "tinysr.h"
+#include <stdio.h>
 
 // Defined here to avoid polluting the scope of the user.
 #ifndef PI
@@ -88,7 +89,17 @@ void tinysr_feed_input(tinysr_ctx_t* ctx, samp_t* samples, int length) {
 
 // Call to trigger recognition on all the accumulated frames.
 void tinysr_recognize_frames(tinysr_ctx_t* ctx) {
-	
+	// Iterate over accumulated feature vectors.
+	while (ctx->fv_list.length > 0) {
+		feature_vector_t* fv = list_pop(&ctx->fv_list);
+		printf("Log energy: %.2f\n", fv->log_energy);
+		printf("Cepstrum:");
+		int i;
+		for (i = 0; i < 13; i++)
+			printf(" %.2f", fv->cepstrum[i]);
+		printf("\n");
+		free(fv);
+	}
 }
 
 // Private function: Do not call directly!
@@ -163,7 +174,7 @@ void tinysr_process_frame(tinysr_ctx_t* ctx) {
 			cepstrum[i] += filter_bank[j] * cosf(PI * i * (j + 0.5) / 23.0);
 	}
 	// We're now done with the entire front-end processing!
-	// Now we save the feature vector which consists of log_energy, and cepstrum into a singly linked list.
+	// Now we save the feature vector which consists of log_energy, and cepstrum into the list.
 	feature_vector_t* fv = malloc(sizeof(feature_vector_t));
 	fv->log_energy = log_energy;
 	for (i = 0; i < 13; i++)

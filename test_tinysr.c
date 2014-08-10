@@ -1,6 +1,7 @@
 // Test TinySR.
 
 #include <stdio.h>
+#include <math.h>
 #include "tinysr.h"
 
 #define COUNT 100
@@ -23,7 +24,10 @@ int main(int argc, char** argv) {
 	// causes no filtering to occur.
 	ctx->input_framerate = 16000;
 	samp_t frame[400];
+	for (i = 0; i < 400; i++)
+		frame[i] = i + (int) (40 * cosf(i/2.0));
 	tinysr_feed_input(ctx, frame, 400);
+	tinysr_recognize_frames(ctx);
 	printf("Freeing context.\n");
 	tinysr_free_context(ctx);
 
