@@ -1,5 +1,5 @@
 #! /usr/bin/python
-# Quick testing code to determine if I'm happy with linear interpolation for audio filtering.
+# Quick testing code to determine if I'm happy with linear interpolation for audio resampling.
 # My tests say, probably yes. The results sound quite reasonable.
 
 import math, wave, struct, sys
