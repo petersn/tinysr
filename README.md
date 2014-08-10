@@ -13,10 +13,11 @@ The goal is to provide the following features:
 * Easy non-expert vocabulary training, and good speaker independence.
 
 Currently the recognition pipeline looks like:
-* Generic audio processing (reconfigurable AGC + resampling filter, bringing input to 16 kHz)
+* Generic audio processing (resampling filter, bringing input to 16 kHz)
 * ES 201 108 feature extraction, to log energy + 13 cepstral components.
+* Utterance detection, followed by utterance level Cepstral Mean Normalization.
 * Gaussian mixture models. (Unimplemented.)
-* HMM with dynamic programming trellis decoder. (Unimplemented.)
+* Dynamic Time Warping to match against the vocabulary. (Unimplemented.)
 
 The code is divided into the following directories:
 * `apps`: Contains programs that link against `tinysr.o`. The makefile is set up to automatically compile anything matching `*.c` in `apps` against `tinysr.o`.
