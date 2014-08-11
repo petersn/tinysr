@@ -5,7 +5,10 @@
 // Implements ES 201 108 feature extraction.
 
 #include "tinysr.h"
+#include <stdlib.h>
+#include <assert.h>
 #include <stdio.h>
+#include <math.h>
 
 // Defined here to avoid polluting the scope of the user.
 #ifndef PI
@@ -82,6 +85,8 @@ tinysr_ctx_t* tinysr_allocate_context(void) {
 	ctx->temp_buffer = malloc(sizeof(float) * FFT_LENGTH);
 	// The features vector list: whenever a frame of input is processed, the resultant features go in here.
 	ctx->fv_list = (list_t){0};
+	// The feature vectors are numbered in the list, and this variable stores the next value to be assigned.
+	ctx->next_fv_number = 1;
 	// This points to the fv_list node that has been most recently checked.
 	// It might not be the end of fv_list if new frames have been added, but not yet processed.
 	ctx->current_fv = NULL;
@@ -313,6 +318,8 @@ void tinysr_process_frame(tinysr_ctx_t* ctx) {
 	fv->log_energy = log_energy;
 	for (i = 0; i < 13; i++)
 		fv->cepstrum[i] = cepstrum[i];
+	// Consecutively number the feature vectors.
+	fv->number = ctx->next_fv_number++;
 	// Store the noise floor, so the utterance detector can take it into account.
 	fv->noise_floor = ctx->noise_floor_estimate;
 	list_push(&ctx->fv_list, fv);
