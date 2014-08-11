@@ -201,6 +201,18 @@ void tinysr_recognize_frames(tinysr_ctx_t* ctx) {
 			ctx->utterance_state = 0;
 		}
 	}
+	// Now that we're done processing FVs for the time being, forget about old ones that no longer could
+	// possibly be used in an utterance. Begin by computing the oldest possible FV number we could care about.
+	uint64_t oldest_still_relevant = -1;
+	// We care about UTTERANCE_FRAMES_BACKED_UP frames before the current FV.
+	if (ctx->current_fv != NULL)
+		oldest_still_relevant = ctx->current_fv->datum.number - UTTERANCE_FRAMES_BACKED_UP;
+	// We also care about any FVs currently in an utterance being detected.
+	if (ctx->utterance_start != NULL)
+		oldest_still_relevant = ctx->utterance_start->datum.number;
+	// While the oldest FV in the list is too old to be relevant, drop it.
+	while (ctx->fv_list.length && ctx->fv_list.head.datum->number < oldest_still_relevant)
+		free(list_pop(&ctx->fv_list));		
 }
 
 // This function reads the current state, and processes an utterance.
