@@ -19,7 +19,7 @@ Currently the recognition pipeline looks like:
 * Gaussian mixture models. (Unimplemented.)
 * Dynamic Time Warping to match against the vocabulary. (Unimplemented.)
 
-If you use my code, I'd love it if you dropped me a line at `snp@mit.edu`.
+If you use my code, I'd love it if you dropped me a line at <snp@mit.edu>.
 
 The code is divided into the following directories:
 * `apps`: Contains programs that link against `tinysr.o`. The makefile is set up to automatically compile anything matching `*.c` in `apps` against `tinysr.o`.
