@@ -12,7 +12,7 @@ int main(int argc, char** argv) {
 	if (argc != 2 || strcmp(argv[1], "--go")) {
 		printf("Usage:\n");
 		printf("<command to produce audio> | detect_utter --go\n");
-		printf("Expects the input to be 16000 Hz 16-bit signed little endian raw audio.\n");
+		printf("Expects the input to be 16000 Hz mono 16-bit signed little endian raw audio.\n");
 		printf("Does utterance detection, and prints out the results.\n");
 		printf("Some example commands that can produce suitable audio:\n");
 		printf("arecord -r 16000 -c 1 -f S16_LE\n");
