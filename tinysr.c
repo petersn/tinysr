@@ -183,8 +183,11 @@ void tinysr_recognize_frames(tinysr_ctx_t* ctx) {
 			}
 		} else if (ctx->boredom >= UTTERANCE_STOP_LENGTH) {
 			printf("Utterance over.\n");
-			ctx->utterance_state = 0;
+			// Initiate recognition on the detected utterance.
 			tinysr_process_utterance(ctx);
+			// Finally, reset our state machine.
+			ctx->utterance_start = NULL;
+			ctx->utterance_state = 0;
 		}
 	}
 }
@@ -195,7 +198,31 @@ void tinysr_recognize_frames(tinysr_ctx_t* ctx) {
 // Specifically, ctx->utterance_start and ctx->current_fv must point to the
 // first and last feature vector in the utterance, respectively and inclusively.
 void tinysr_process_utterance(tinysr_ctx_t* ctx) {
-	printf("TODO.\n");
+	// Count the length of the utterance, by traversing the singly linked list.
+	int utterance_length = 1;
+	list_node_t* node;
+	for (node = ctx->current_fv; node != ctx->current_fv; node = node->next)
+		utterance_length++;
+	// Copy over the utterance into a flat array, for processing.
+	feature_vector_t* utterance = malloc(sizeof(feature_vector_t) * utterance_length);
+	int i = 0;
+	for (node = ctx->current_fv; node != ctx->current_fv; node = node->next)
+		utterance[i++] = *(feature_vector_t*)node->datum;
+	// Begin processing the utterance.
+	// (1) Cepstral Mean Normalization: start by averaging the cepstrum over the utterance.
+	float cepstral_mean[13] = {0};
+	int j;
+	for (i = 0; i < utterance_length; i++)
+		for (j = 0; j < 13; j++)
+			cepstral_mean[j] += utterance[i].cepstrum[j] / (float) utterance_length;
+	// Then, subtract out the cepstral mean from the whole utterance.
+	for (i = 0; i < utterance_length; i++)
+		for (j = 0; j < 13; j++)
+			utterance[i].cepstrum[j] -= cepstral_mean[j];
+	// (2) Perform Dynamic Time Warping against the model list.
+	// TODO
+	// Finally, free the utterance copy.
+	free(utterance);
 }
 
 // Private function: Do not call directly!
@@ -259,9 +286,8 @@ void tinysr_process_frame(tinysr_ctx_t* ctx) {
 	for (k = 0; k < 23; k++)
 		filter_bank[k] = logf(filter_bank[k] + 2e-22);
 	// Compute the mel cepstrum. (ES 201 108 4.2.11)
-	float cepstrum[13];
+	float cepstrum[13] = {0};
 	for (i = 0; i < 13; i++) {
-		cepstrum[i] = 0.0;
 		// Compute the discrete cosine transform (DCT) the naive way.
 		// XXX: Again notice that I'm zero indexing: filter_bank[j] contains what the spec calls f_(j+1).
 		// This is why it's (j + 0.5) rather than (j - 0.5) like in the spec in the upcoming expression.
