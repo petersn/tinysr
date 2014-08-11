@@ -3,10 +3,18 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <signal.h>
 #include <math.h>
 #include "tinysr.h"
 
 #define READ_SAMPS 128
+
+int keep_reading;
+void sig_handler(int signo) {
+	printf("SIGINT caught, stopping.\n");
+	keep_reading = 0;
+}
 
 int main(int argc, char** argv) {
 	if (argc != 2 || strcmp(argv[1], "--go")) {
@@ -25,7 +33,9 @@ int main(int argc, char** argv) {
 	tinysr_ctx_t* ctx = tinysr_allocate_context();
 	ctx->input_sample_rate = 16000;
 	samp_t array[READ_SAMPS];
-	while (1) {
+	keep_reading = 1;
+	signal(SIGINT, sig_handler);
+	while (keep_reading) {
 		// Try to read in samples.
 		size_t samples_read = fread(array, sizeof(samp_t), READ_SAMPS, stdin);
 		if (samples_read == 0) break;

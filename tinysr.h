@@ -54,7 +54,7 @@ typedef struct {
 	float* temp_buffer;
 	// Feature vector list.
 	list_t fv_list;
-	uint64_t next_fv_number;
+	long long next_fv_number;
 	list_node_t* current_fv;
 	list_node_t* utterance_start;
 	float noise_floor_estimate;
@@ -64,7 +64,7 @@ typedef struct {
 } tinysr_ctx_t;
 
 typedef struct {
-	uint64_t number;
+	long long number;
 	float log_energy;
 	float cepstrum[13];
 	float noise_floor;
