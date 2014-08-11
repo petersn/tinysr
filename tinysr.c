@@ -23,12 +23,12 @@
 #define UTTERANCE_START_LENGTH 5
 // And, to end an utterance, the state machine must get boredom this many frames in a row.
 #define UTTERANCE_STOP_LENGTH 10
-// When an utterance is detected, this many frames before the beginning of the detection are also scooped up.
-// This is to take into account the fact that most utterances begin with quiet intro dynamics that are hard to pick up otherwise.
+// When an utterance is detected, this many frames before the beginning of the detection
+// are also scooped up. This is to take into account the fact that most utterances begin
+// with quiet intro dynamics that are hard to pick up otherwise. Note: This doesn't take
+// into account UTTERANCE_START_LENGTH, so if this value is zero, then UTTERANCE_START_LENGTH-1
+// exciting frames will be missed.
 #define UTTERANCE_FRAMES_BACKED_UP 7
-
-// This is how many frames must be retained in the list to guarantee that we don't lose the beginning of the utterance.
-#define MIN_FRAMES_MUST_RETAIN (UTTERANCE_CONSECUTIVE_FRAMES + UTTERANCE_FRAMES_BACKED_UP)
 
 void list_push(list_t* list, void* datum) {
 	list->length++;
@@ -114,7 +114,7 @@ void tinysr_free_context(tinysr_ctx_t* ctx) {
 }
 
 // Feed in samples to the speech recognizer.
-// Performs speech recognition immediately, as frames become complete.
+// Performs feature extraction immediately, as frames become complete.
 void tinysr_feed_input(tinysr_ctx_t* ctx, samp_t* samples, int length) {
 	while (length--) {
 		// Read one sample in.
