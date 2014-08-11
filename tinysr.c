@@ -15,11 +15,13 @@
 #  define PI2 6.283185307179586232
 #endif
 
-// The log energy of the frame must exceed the noise floor estimate by this much to trigger utterance detection.
-#define UTTERANCE_ENERGY_THRESHOLD 3.0
-// Further, it must continue to exceed the noise floor for this many frames in a row.
-#define UTTERANCE_START_LENGTH 3
-// And, to end, an utterance must be below the energy threshold for this many frames in a row.
+// The log energy of the frame must exceed the noise floor estimate by this much to trigger excitement, which triggers utterance detection.
+#define UTTERANCE_START_ENERGY_THRESHOLD 5.0
+// Alternatively, the log energy must NOT exceed the noise floor by this much to trigger boredom, which ends an utterance.
+#define UTTERANCE_STOP_ENERGY_THRESHOLD 1.0
+// The state machine must get excitement this many frames in a row to trigger an utterance.
+#define UTTERANCE_START_LENGTH 5
+// And, to end an utterance, the state machine must get boredom this many frames in a row.
 #define UTTERANCE_STOP_LENGTH 10
 // When an utterance is detected, this many frames before the beginning of the detection are also scooped up.
 // This is to take into account the fact that most utterances begin with quiet intro dynamics that are hard to pick up otherwise.
@@ -159,14 +161,18 @@ void tinysr_recognize_frames(tinysr_ctx_t* ctx) {
 		else break;
 		// Now we processes this new feature vector.
 		feature_vector_t* fv = (feature_vector_t*) ctx->current_fv->datum;
+		static int counter = 0;
+		if (counter++ % 30 == 0)
+			printf(":: %.2f - %.2f\n", fv->noise_floor, fv->log_energy);
 		// If the new FV's energy exceeds the threshold, become more excited. Otherwise, reset.
-		if (fv->log_energy > fv->noise_floor + UTTERANCE_ENERGY_THRESHOLD) {
+		if (fv->log_energy > fv->noise_floor + UTTERANCE_START_ENERGY_THRESHOLD)
 			ctx->excitement += 1.0;
-			ctx->boredom = 0.0;
-		} else {
+		else
 			ctx->excitement = 0.0;
+		if (fv->log_energy < fv->noise_floor + UTTERANCE_STOP_ENERGY_THRESHOLD)
 			ctx->boredom += 1.0;
-		}
+		else
+			ctx->boredom = 0.0;
 		// Here begins the utterance detection state machine. The state is stored in ctx->utterance_state.
 		// Zero means waiting for utterance, one means waiting for utterance to end.
 		if (ctx->utterance_state == 0) {
@@ -298,9 +304,9 @@ void tinysr_process_frame(tinysr_ctx_t* ctx) {
 	// Do noise floor estimation. Clearly, it's impossible for there to be less energy than the true noise floor.
 	// Thus, if the energy is lower than our current floor estimate, then lower our estimate. However, if the
 	// energy is greater than our estimate, raise it slowly. This is a ``slow to rise, fast to fall'' estimator.
-	// We use 0.99 * old + 0.01 * new, which gives a one second time constant with one frame per 10 ms. 
+	// We use 0.999 * old + 0.001 * new, which gives a ten second time constant with one frame per 10 ms. 
 	if (log_energy < ctx->noise_floor_estimate) ctx->noise_floor_estimate = log_energy;
-	else ctx->noise_floor_estimate = 0.99 * ctx->noise_floor_estimate + 0.01 * log_energy;
+	else ctx->noise_floor_estimate = 0.999 * ctx->noise_floor_estimate + 0.001 * log_energy;
 	// We're now done with the entire front-end processing!
 	// Now we save the feature vector which consists of log_energy, and cepstrum into the list.
 	feature_vector_t* fv = malloc(sizeof(feature_vector_t));
