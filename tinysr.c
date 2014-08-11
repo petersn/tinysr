@@ -23,7 +23,7 @@
 // Alternatively, the log energy must NOT exceed the noise floor by this much to trigger boredom, which ends an utterance.
 #define UTTERANCE_STOP_ENERGY_THRESHOLD 1.0
 // The state machine must get excitement this many frames in a row to trigger an utterance.
-#define UTTERANCE_START_LENGTH 5
+#define UTTERANCE_START_LENGTH 10
 // And, to end an utterance, the state machine must get boredom this many frames in a row.
 #define UTTERANCE_STOP_LENGTH 10
 // When an utterance is detected, this many frames before the beginning of the detection
@@ -31,7 +31,7 @@
 // with quiet intro dynamics that are hard to pick up otherwise. Note: This doesn't take
 // into account UTTERANCE_START_LENGTH, so if this value is zero, then UTTERANCE_START_LENGTH-1
 // exciting frames will be missed.
-#define UTTERANCE_FRAMES_BACKED_UP 7
+#define UTTERANCE_FRAMES_BACKED_UP 15
 
 void list_push(list_t* list, void* datum) {
 	list->length++;
@@ -249,7 +249,7 @@ void tinysr_process_utterance(tinysr_ctx_t* ctx) {
 }
 
 // Private function: Do not call directly!
-// Initiates recognition on the contents of ctx->input_buffer.
+// Initiates front-end feature extraction on the contents of ctx->input_buffer.
 void tinysr_process_frame(tinysr_ctx_t* ctx) {
 	int i;
 	// Copy over the frame from the circular buffer into temp_buffer.
