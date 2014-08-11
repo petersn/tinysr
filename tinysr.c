@@ -15,6 +15,19 @@
 #  define PI2 6.283185307179586232
 #endif
 
+// The log energy of the frame must exceed the noise floor estimate by this much to trigger utterance detection.
+#define UTTERANCE_ENERGY_THRESHOLD 3.0
+// Further, it must continue to exceed the noise floor for this many frames in a row.
+#define UTTERANCE_START_LENGTH 3
+// And, to end, an utterance must be below the energy threshold for this many frames in a row.
+#define UTTERANCE_STOP_LENGTH 10
+// When an utterance is detected, this many frames before the beginning of the detection are also scooped up.
+// This is to take into account the fact that most utterances begin with quiet intro dynamics that are hard to pick up otherwise.
+#define UTTERANCE_FRAMES_BACKED_UP 7
+
+// This is how many frames must be retained in the list to guarantee that we don't lose the beginning of the utterance.
+#define MIN_FRAMES_MUST_RETAIN (UTTERANCE_CONSECUTIVE_FRAMES + UTTERANCE_FRAMES_BACKED_UP)
+
 void list_push(list_t* list, void* datum) {
 	list->length++;
 	// Create the new list node, and fill out its entries.
@@ -67,6 +80,24 @@ tinysr_ctx_t* tinysr_allocate_context(void) {
 	ctx->temp_buffer = malloc(sizeof(float) * FFT_LENGTH);
 	// The features vector list: whenever a frame of input is processed, the resultant features go in here.
 	ctx->fv_list = (list_t){0};
+	// This points to the fv_list node that has been most recently checked.
+	// It might not be the end of fv_list if new frames have been added, but not yet processed.
+	ctx->current_fv = NULL;
+	// When an utterance is detected as beginning, this variable is set to point to the beginning FV.
+	ctx->utterance_start = NULL;
+	// The running estimate of the noise floor.
+	// Initially set it to any over-estimate, essentially infinity.
+	ctx->noise_floor_estimate = 100.0;
+	// These values accumulate during energy and silence respectively, and reset to zero during the opposite.
+	// They're floats, but in the current implementation they accumulate at a rate of 1.0 per feature vector.
+	// They are used in the utterance detection state machine to determine starting and stoping respectively.
+	ctx->excitement = 0.0;
+	ctx->boredom = 0.0;
+	// This variable holds the main state of the utterance detection state machine.
+	// If it is zero, then we are waiting for an utterance to start.
+	// If it's one, then an utterance is in progress.
+	ctx->utterance_state = 0;
+
 	return ctx;
 }
 
@@ -112,19 +143,59 @@ void tinysr_feed_input(tinysr_ctx_t* ctx, samp_t* samples, int length) {
 	}
 }
 
-// Call to trigger recognition on all the accumulated frames.
+// Call to trigger utterance detection on all the accumulated frames.
 void tinysr_recognize_frames(tinysr_ctx_t* ctx) {
-	// Iterate over accumulated feature vectors.
-	while (ctx->fv_list.length > 0) {
-		feature_vector_t* fv = list_pop(&ctx->fv_list);
-		printf("Log energy: %.2f\n", fv->log_energy);
-		printf("Cepstrum:");
-		int i;
-		for (i = 0; i < 13; i++)
-			printf(" %.2f", fv->cepstrum[i]);
-		printf("\n");
-		free(fv);
+	// If no feature vectors have yet been produced, we can't start processing.
+	if (ctx->fv_list.length == 0)
+		return;
+	while (1) {
+		// Try to get a new feature vector to process, either by starting up, or getting the next.
+		if (ctx->current_fv == NULL)
+			ctx->current_fv = ctx->fv_list.head;
+		else if (ctx->current_fv->next != NULL)
+			ctx->current_fv = ctx->current_fv->next;
+		// If we can't get a new feature vector to process, we're done.
+		// This guarantees that we only get past this line once for each feature vector.
+		else break;
+		// Now we processes this new feature vector.
+		feature_vector_t* fv = (feature_vector_t*) ctx->current_fv->datum;
+		// If the new FV's energy exceeds the threshold, become more excited. Otherwise, reset.
+		if (fv->log_energy > fv->noise_floor + UTTERANCE_ENERGY_THRESHOLD) {
+			ctx->excitement += 1.0;
+			ctx->boredom = 0.0;
+		} else {
+			ctx->excitement = 0.0;
+			ctx->boredom += 1.0;
+		}
+		// Here begins the utterance detection state machine. The state is stored in ctx->utterance_state.
+		// Zero means waiting for utterance, one means waiting for utterance to end.
+		if (ctx->utterance_state == 0) {
+			// If we've become excited some number of feature vectors in a row, then we detect an utterance.
+			if (ctx->excitement >= UTTERANCE_START_LENGTH) {
+				printf("Utterance detected.\n");
+				ctx->utterance_state = 1;
+				ctx->utterance_start = ctx->current_fv;
+				// Now back up some number of FVs. (See #defs at top for explanation.)
+				int i;
+				for (i = 0; i < UTTERANCE_FRAMES_BACKED_UP; i++)
+					if (ctx->utterance_start->prev != NULL)
+						ctx->utterance_start = ctx->utterance_start->prev;
+			}
+		} else if (ctx->boredom >= UTTERANCE_STOP_LENGTH) {
+			printf("Utterance over.\n");
+			ctx->utterance_state = 0;
+			tinysr_process_utterance(ctx);
+		}
 	}
+}
+
+// This function reads the current state, and processes an utterance.
+// Do not call directly! This function requires that the ctx have some variables
+// loaded with appropriate values to point to the data of the utterance.
+// Specifically, ctx->utterance_start and ctx->current_fv must point to the
+// first and last feature vector in the utterance, respectively and inclusively.
+void tinysr_process_utterance(tinysr_ctx_t* ctx) {
+	printf("TODO.\n");
 }
 
 // Private function: Do not call directly!
@@ -198,12 +269,20 @@ void tinysr_process_frame(tinysr_ctx_t* ctx) {
 		for (j = 0; j < 23; j++)
 			cepstrum[i] += filter_bank[j] * cosf(PI * i * (j + 0.5) / 23.0);
 	}
+	// Do noise floor estimation. Clearly, it's impossible for there to be less energy than the true noise floor.
+	// Thus, if the energy is lower than our current floor estimate, then lower our estimate. However, if the
+	// energy is greater than our estimate, raise it slowly. This is a ``slow to rise, fast to fall'' estimator.
+	// We use 0.99 * old + 0.01 * new, which gives a one second time constant with one frame per 10 ms. 
+	if (log_energy < ctx->noise_floor_estimate) ctx->noise_floor_estimate = log_energy;
+	else ctx->noise_floor_estimate = 0.99 * ctx->noise_floor_estimate + 0.01 * log_energy;
 	// We're now done with the entire front-end processing!
 	// Now we save the feature vector which consists of log_energy, and cepstrum into the list.
 	feature_vector_t* fv = malloc(sizeof(feature_vector_t));
 	fv->log_energy = log_energy;
 	for (i = 0; i < 13; i++)
 		fv->cepstrum[i] = cepstrum[i];
+	// Store the noise floor, so the utterance detector can take it into account.
+	fv->noise_floor = ctx->noise_floor_estimate;
 	list_push(&ctx->fv_list, fv);
 }
 

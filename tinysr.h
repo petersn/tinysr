@@ -57,12 +57,21 @@ typedef struct {
 	float* temp_buffer;
 	// Feature vector list.
 	list_t fv_list;
+	list_node_t* current_fv;
+	list_node_t* utterance_start;
+	float noise_floor_estimate;
+	float excitement;
+	float boredom;
+	int utterance_state;
 } tinysr_ctx_t;
 
 typedef struct {
 	float log_energy;
 	float cepstrum[13];
+	float noise_floor;
 } feature_vector_t;
+
+// === Public API ===
 
 // Call to get/free a context.
 tinysr_ctx_t* tinysr_allocate_context(void);
@@ -74,7 +83,12 @@ void tinysr_feed_input(tinysr_ctx_t* ctx, samp_t* samples, int length);
 // Call to trigger the big expensive recognition operation.
 void tinysr_recognize_frames(tinysr_ctx_t* ctx);
 
-// Private functions.
+// === Private functions ===
+
+// This function runs recognition on a detected utterance.
+// You should never have to call this function directly.
+void tinysr_process_utterance(tinysr_ctx_t* ctx);
+
 // Initiates a feature extraction run on the contents of input_buffer.
 // This function is called automatically by tinysr_feed_input whenever the
 // buffer is full, so you should never have to call it yourself.
