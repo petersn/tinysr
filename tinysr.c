@@ -33,7 +33,7 @@
 // exciting frames will be missed.
 #define UTTERANCE_FRAMES_BACKED_UP 15
 
-void list_push(list_t* list, void* datum) {
+void list_append_back(list_t* list, void* datum) {
 	list->length++;
 	// Create the new list node, and fill out its entries.
 	list_node_t* tail = malloc(sizeof(list_node_t));
@@ -48,7 +48,7 @@ void list_push(list_t* list, void* datum) {
 		list->head = list->tail;
 }
 
-void* list_pop(list_t* list) {
+void* list_pop_front(list_t* list) {
 	if (list->head == NULL)
 		return NULL;
 	list->length--;
@@ -104,6 +104,8 @@ tinysr_ctx_t* tinysr_allocate_context(void) {
 	// If it is zero, then we are waiting for an utterance to start.
 	// If it's one, then an utterance is in progress.
 	ctx->utterance_state = 0;
+	// List of utterances, with cepstral mean normalization already applied.
+	ctx->utterance_list = (list_t){0};
 
 	return ctx;
 }
@@ -114,7 +116,7 @@ void tinysr_free_context(tinysr_ctx_t* ctx) {
 	free(ctx->temp_buffer);
 	// Free any feature vectors that happen to be allocated at the time.
 	while (ctx->fv_list.length)
-		free(list_pop(&ctx->fv_list));
+		free(list_pop_front(&ctx->fv_list));
 	free(ctx);
 }
 
@@ -194,8 +196,28 @@ void tinysr_recognize_frames(tinysr_ctx_t* ctx) {
 			}
 		} else if (ctx->boredom >= UTTERANCE_STOP_LENGTH) {
 			printf("Utterance over.\n");
-			// Initiate recognition on the detected utterance.
-			tinysr_process_utterance(ctx);
+			// Count the length of the utterance, by traversing the singly linked list.
+			int utterance_length = 1;
+			list_node_t* node;
+			for (node = ctx->current_fv; node != ctx->current_fv; node = node->next)
+				utterance_length++;
+			// Copy over the utterance into a flat array, for processing.
+			feature_vector_t* utterance = malloc(sizeof(feature_vector_t) * utterance_length);
+			int i = 0;
+			for (node = ctx->current_fv; node != ctx->current_fv; node = node->next)
+				utterance[i++] = *(feature_vector_t*)node->datum;
+			// Begin processing the utterance.
+			// (1) Cepstral Mean Normalization: start by averaging the cepstrum over the utterance.
+			float cepstral_mean[13] = {0};
+			int j;
+			for (i = 0; i < utterance_length; i++)
+				for (j = 0; j < 13; j++)
+					cepstral_mean[j] += utterance[i].cepstrum[j] / (float) utterance_length;
+			// Then, subtract out the cepstral mean from the whole utterance.
+			for (i = 0; i < utterance_length; i++)
+				for (j = 0; j < 13; j++)
+					utterance[i].cepstrum[j] -= cepstral_mean[j];
+			
 			// Finally, reset our state machine.
 			ctx->utterance_start = NULL;
 			ctx->utterance_state = 0;
@@ -212,7 +234,7 @@ void tinysr_recognize_frames(tinysr_ctx_t* ctx) {
 		oldest_still_relevant = ((feature_vector_t*)ctx->utterance_start->datum)->number;
 	// While the oldest FV in the list is too old to be relevant, drop it.
 	while (ctx->fv_list.length && ((feature_vector_t*)ctx->fv_list.head->datum)->number < oldest_still_relevant)
-		free(list_pop(&ctx->fv_list));
+		free(list_pop_front(&ctx->fv_list));
 }
 
 // This function reads the current state, and processes an utterance.
@@ -221,31 +243,10 @@ void tinysr_recognize_frames(tinysr_ctx_t* ctx) {
 // Specifically, ctx->utterance_start and ctx->current_fv must point to the
 // first and last feature vector in the utterance, respectively and inclusively.
 void tinysr_process_utterance(tinysr_ctx_t* ctx) {
-	// Count the length of the utterance, by traversing the singly linked list.
-	int utterance_length = 1;
-	list_node_t* node;
-	for (node = ctx->current_fv; node != ctx->current_fv; node = node->next)
-		utterance_length++;
-	// Copy over the utterance into a flat array, for processing.
-	feature_vector_t* utterance = malloc(sizeof(feature_vector_t) * utterance_length);
-	int i = 0;
-	for (node = ctx->current_fv; node != ctx->current_fv; node = node->next)
-		utterance[i++] = *(feature_vector_t*)node->datum;
-	// Begin processing the utterance.
-	// (1) Cepstral Mean Normalization: start by averaging the cepstrum over the utterance.
-	float cepstral_mean[13] = {0};
-	int j;
-	for (i = 0; i < utterance_length; i++)
-		for (j = 0; j < 13; j++)
-			cepstral_mean[j] += utterance[i].cepstrum[j] / (float) utterance_length;
-	// Then, subtract out the cepstral mean from the whole utterance.
-	for (i = 0; i < utterance_length; i++)
-		for (j = 0; j < 13; j++)
-			utterance[i].cepstrum[j] -= cepstral_mean[j];
 	// (2) Perform Dynamic Time Warping against the model list.
 	// TODO
 	// Finally, free the utterance copy.
-	free(utterance);
+//	free(utterance);
 }
 
 // Private function: Do not call directly!
@@ -334,7 +335,7 @@ void tinysr_process_frame(tinysr_ctx_t* ctx) {
 	fv->number = ctx->next_fv_number++;
 	// Store the noise floor, so the utterance detector can take it into account.
 	fv->noise_floor = ctx->noise_floor_estimate;
-	list_push(&ctx->fv_list, fv);
+	list_append_back(&ctx->fv_list, fv);
 }
 
 // Computes the FFT on strided data recursively via decimation in time.

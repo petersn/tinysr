@@ -32,8 +32,8 @@ typedef struct {
 	list_node_t* tail;
 } list_t;
 
-void list_push(list_t* list, void* datum);
-void* list_pop(list_t* list);
+void list_append_back(list_t* list, void* datum);
+void* list_pop_front(list_t* list);
 
 // TinySR context, and associated functions.
 typedef struct {
@@ -61,6 +61,7 @@ typedef struct {
 	float excitement;
 	float boredom;
 	int utterance_state;
+	list_t utterance_list;
 } tinysr_ctx_t;
 
 typedef struct {

@@ -33,7 +33,7 @@ int main(int argc, char** argv) {
 		// Reach into the context internals to pull out the feature vector.
 		while (ctx->fv_list.length) {
 			// Write the feature vector to stdout as CSV.
-			feature_vector_t* fv = list_pop(&ctx->fv_list);
+			feature_vector_t* fv = list_pop_front(&ctx->fv_list);
 			printf("%f", fv->log_energy);
 			int i;
 			for (i = 0; i < 13; i++)
