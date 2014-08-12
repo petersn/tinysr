@@ -202,22 +202,26 @@ void tinysr_recognize_frames(tinysr_ctx_t* ctx) {
 			for (node = ctx->current_fv; node != ctx->current_fv; node = node->next)
 				utterance_length++;
 			// Copy over the utterance into a flat array, for processing.
-			feature_vector_t* utterance = malloc(sizeof(feature_vector_t) * utterance_length);
+			feature_vector_t* utterance_fvs = malloc(sizeof(feature_vector_t) * utterance_length);
 			int i = 0;
 			for (node = ctx->current_fv; node != ctx->current_fv; node = node->next)
-				utterance[i++] = *(feature_vector_t*)node->datum;
-			// Begin processing the utterance.
-			// (1) Cepstral Mean Normalization: start by averaging the cepstrum over the utterance.
+				utterance_fvs[i++] = *(feature_vector_t*)node->datum;
+			// Do Cepstral Mean Normalization: start by averaging the cepstrum over the utterance.
 			float cepstral_mean[13] = {0};
 			int j;
 			for (i = 0; i < utterance_length; i++)
 				for (j = 0; j < 13; j++)
-					cepstral_mean[j] += utterance[i].cepstrum[j] / (float) utterance_length;
+					cepstral_mean[j] += utterance_fvs[i].cepstrum[j] / (float) utterance_length;
 			// Then, subtract out the cepstral mean from the whole utterance.
 			for (i = 0; i < utterance_length; i++)
 				for (j = 0; j < 13; j++)
-					utterance[i].cepstrum[j] -= cepstral_mean[j];
-			
+					utterance_fvs[i].cepstrum[j] -= cepstral_mean[j];
+			// Build up an utterance object.
+			utterance_t* utterance = malloc(sizeof(utterance));
+			utterance->length = utterance_length;
+			utterance->feature_vectors = utterance_fvs;
+			// And append it into the list of pending utterances, for further processing.
+			list_append_back(&ctx->utterance_list, utterance);
 			// Finally, reset our state machine.
 			ctx->utterance_start = NULL;
 			ctx->utterance_state = 0;
@@ -243,10 +247,7 @@ void tinysr_recognize_frames(tinysr_ctx_t* ctx) {
 // Specifically, ctx->utterance_start and ctx->current_fv must point to the
 // first and last feature vector in the utterance, respectively and inclusively.
 void tinysr_process_utterance(tinysr_ctx_t* ctx) {
-	// (2) Perform Dynamic Time Warping against the model list.
 	// TODO
-	// Finally, free the utterance copy.
-//	free(utterance);
 }
 
 // Private function: Do not call directly!

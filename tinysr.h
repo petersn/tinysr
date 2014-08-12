@@ -71,6 +71,11 @@ typedef struct {
 	float noise_floor;
 } feature_vector_t;
 
+typedef struct {
+	int length;
+	feature_vector_t* feature_vectors;
+} utterance_t;
+
 // === Public API ===
 
 // Call to get/free a context.
