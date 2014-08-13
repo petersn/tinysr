@@ -26,7 +26,7 @@ int main(int argc, char** argv) {
 	for (i = 0; i < 500; i++)
 		frame[i] = i + (int) (40 * cosf(i/0.6));
 	tinysr_feed_input(ctx, frame, 500);
-	tinysr_recognize_frames(ctx);
+	tinysr_detect_utterances(ctx);
 	printf("Freeing context.\n");
 	tinysr_free_context(ctx);
 

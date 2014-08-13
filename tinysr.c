@@ -32,6 +32,9 @@
 // into account UTTERANCE_START_LENGTH, so if this value is zero, then UTTERANCE_START_LENGTH-1
 // exciting frames will be missed.
 #define UTTERANCE_FRAMES_BACKED_UP 15
+// Again, because of the large amount of silence required to end an utterance, this is the
+// number of frames dropped off of the end of an utterance, to avoid collecting silence.
+#define UTTERANCE_FRAMES_DROPPED_FROM_END 10
 
 void list_append_back(list_t* list, void* datum) {
 	list->length++;
@@ -117,6 +120,12 @@ void tinysr_free_context(tinysr_ctx_t* ctx) {
 	// Free any feature vectors that happen to be allocated at the time.
 	while (ctx->fv_list.length)
 		free(list_pop_front(&ctx->fv_list));
+	// Free any utterances.
+	while (ctx->utterance_list.length) {
+		utterance_t* utterance = (utterance_t*) list_pop_front(&ctx->utterance_list);
+		free(utterance->feature_vectors);
+		free(utterance);
+	}
 	free(ctx);
 }
 
@@ -153,7 +162,7 @@ void tinysr_feed_input(tinysr_ctx_t* ctx, samp_t* samples, int length) {
 }
 
 // Call to trigger utterance detection on all the accumulated frames.
-void tinysr_recognize_frames(tinysr_ctx_t* ctx) {
+void tinysr_detect_utterances(tinysr_ctx_t* ctx) {
 	// If no feature vectors have yet been produced, we can't start processing.
 	if (ctx->fv_list.length == 0)
 		return;
@@ -168,9 +177,11 @@ void tinysr_recognize_frames(tinysr_ctx_t* ctx) {
 		else break;
 		// Now we processes this new feature vector.
 		feature_vector_t* fv = (feature_vector_t*) ctx->current_fv->datum;
+#ifdef TINYSR_DEBUG
 		static int counter = 0;
 		if (counter++ % 30 == 0)
 			printf(":: %.2f - %.2f\n", fv->noise_floor, fv->log_energy);
+#endif
 		// If the new FV's energy exceeds the threshold, become more excited. Otherwise, reset.
 		if (fv->log_energy > fv->noise_floor + UTTERANCE_START_ENERGY_THRESHOLD)
 			ctx->excitement += 1.0;
@@ -196,15 +207,23 @@ void tinysr_recognize_frames(tinysr_ctx_t* ctx) {
 			}
 		} else if (ctx->boredom >= UTTERANCE_STOP_LENGTH) {
 			printf("Utterance over.\n");
+			// Now back up some frames from the end.
+			int i;
+			list_node_t* utterance_end = ctx->current_fv;
+			for (i = 0; i < UTTERANCE_FRAMES_DROPPED_FROM_END; i++)
+				// Note: Do an extra check to prevent the end from going before the start.
+				// This would result in the code segfaulting when it tried to pick out the utterance.
+				if (utterance_end->prev != NULL && utterance_end != ctx->utterance_start)
+					utterance_end = utterance_end->prev;
 			// Count the length of the utterance, by traversing the singly linked list.
-			int utterance_length = 1;
+			int utterance_length = 0;
 			list_node_t* node;
-			for (node = ctx->current_fv; node != ctx->current_fv; node = node->next)
+			for (node = ctx->utterance_start; node != utterance_end; node = node->next)
 				utterance_length++;
 			// Copy over the utterance into a flat array, for processing.
 			feature_vector_t* utterance_fvs = malloc(sizeof(feature_vector_t) * utterance_length);
-			int i = 0;
-			for (node = ctx->current_fv; node != ctx->current_fv; node = node->next)
+			i = 0;
+			for (node = ctx->utterance_start; node != utterance_end; node = node->next)
 				utterance_fvs[i++] = *(feature_vector_t*)node->datum;
 			// Do Cepstral Mean Normalization: start by averaging the cepstrum over the utterance.
 			float cepstral_mean[13] = {0};
@@ -220,6 +239,9 @@ void tinysr_recognize_frames(tinysr_ctx_t* ctx) {
 			utterance_t* utterance = malloc(sizeof(utterance));
 			utterance->length = utterance_length;
 			utterance->feature_vectors = utterance_fvs;
+#ifdef TINYSR_DEBUG
+			printf("Got utterance of length: %i\n", utterance->length);
+#endif
 			// And append it into the list of pending utterances, for further processing.
 			list_append_back(&ctx->utterance_list, utterance);
 			// Finally, reset our state machine.

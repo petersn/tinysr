@@ -85,8 +85,8 @@ void tinysr_free_context(tinysr_ctx_t* ctx);
 // Call to pass input samples.
 void tinysr_feed_input(tinysr_ctx_t* ctx, samp_t* samples, int length);
 
-// Call to trigger the big expensive recognition operation.
-void tinysr_recognize_frames(tinysr_ctx_t* ctx);
+// Call to trigger utterance detection.
+void tinysr_detect_utterances(tinysr_ctx_t* ctx);
 
 // === Private functions ===
 

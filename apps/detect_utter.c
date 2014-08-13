@@ -41,7 +41,7 @@ int main(int argc, char** argv) {
 		if (samples_read == 0) break;
 		// Feed in the samples to our recognizer.
 		tinysr_feed_input(ctx, array, (int)samples_read);
-		tinysr_recognize_frames(ctx);
+		tinysr_detect_utterances(ctx);
 	}
 	fprintf(stderr, "Freeing context. Processed %i samples.\n", ctx->processed_samples);
 	tinysr_free_context(ctx);
