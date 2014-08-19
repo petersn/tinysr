@@ -109,6 +109,8 @@ tinysr_ctx_t* tinysr_allocate_context(void) {
 	ctx->utterance_state = 0;
 	// List of utterances, with cepstral mean normalization already applied.
 	ctx->utterance_list = (list_t){0};
+	// List of matching templates to recognize against.
+	ctx->recog_entry_list = (list_t){0};
 
 	return ctx;
 }
@@ -125,6 +127,13 @@ void tinysr_free_context(tinysr_ctx_t* ctx) {
 		utterance_t* utterance = (utterance_t*) list_pop_front(&ctx->utterance_list);
 		free(utterance->feature_vectors);
 		free(utterance);
+	}
+	// Free any recognition entries.
+	while (ctx->recog_entry_list.length) {
+		recog_entry_t* recog_entry = (recog_entry_t*) list_pop_front(&ctx->recog_entry_list);
+		free(recog_entry->match->feature_vectors);
+		free(recog_entry->match);
+		free(recog_entry);
 	}
 	free(ctx);
 }
@@ -359,6 +368,63 @@ void tinysr_process_frame(tinysr_ctx_t* ctx) {
 	// Store the noise floor, so the utterance detector can take it into account.
 	fv->noise_floor = ctx->noise_floor_estimate;
 	list_append_back(&ctx->fv_list, fv);
+}
+
+// Write out a CSV file containing a given utterance.
+// Returns non-zero on error, but doesn't print anything or call perror, or anything like that.
+int write_feature_vector_csv(const char* path, utterance_t* utterance) {
+	FILE* fp = fopen(path, "w");
+	if (fp == NULL)
+		return 1;
+	int i;
+	for (i = 0; i < utterance->length; i++) {
+		feature_vector_t* fv = &utterance->feature_vectors[i];
+		// Write out the log energy.
+		fprintf(fp, "%f", fv->log_energy);
+		// Write out the 13 cepstral components.
+		int j;
+		for (j = 0; j < 13; j++)
+			fprintf(fp, ",%f", fv->cepstrum[j]);
+		fprintf(fp, "\n");
+	}
+	fclose(fp);
+	return 0;
+}
+
+// Reads in an input CSV file, and returns a constructed utterance_t object.
+utterance_t* read_feature_vector_csv(const char* path) {
+	FILE* fp = fopen(path, "r");
+	if (fp == NULL) {
+		perror(path);
+		return NULL;
+	}
+	// Count the number of lines in the input file.
+	int lines = 0;
+	while (!feof(fp))
+		if (fgetc(fp) == '\n')
+			lines++;
+	rewind(fp);
+	// Now slurp up the CSV file, reading in one feature vector per line.
+	utterance_t* result = malloc(sizeof(utterance_t));
+	result->length = lines;
+	result->feature_vectors = malloc(sizeof(feature_vector_t) * lines);
+	int i;
+	for (i = 0; i < lines; i++) {
+		feature_vector_t* fv = &result->feature_vectors[i];
+		// Read in the log energy.
+		fscanf(fp, "%f", &fv->log_energy);
+		// Read in the 13 cepstral components.
+		int j;
+		for (j = 0; j < 13; j++)
+			fscanf(fp, ",%f", &fv->cepstrum[j]);
+		fscanf(fp, "\n");
+	}
+	return result;
+}
+
+// Computes the cost of matching a given utterance against a given template.
+float compute_dynamic_time_warping(utterance_t* utterance, utterance_t* match) {
+	return 0.0;
 }
 
 // Computes the FFT on strided data recursively via decimation in time.

@@ -62,6 +62,7 @@ typedef struct {
 	float boredom;
 	int utterance_state;
 	list_t utterance_list;
+	list_t recog_entry_list;
 } tinysr_ctx_t;
 
 typedef struct {
@@ -76,6 +77,12 @@ typedef struct {
 	feature_vector_t* feature_vectors;
 } utterance_t;
 
+typedef struct {
+	int name;
+	int length;
+	utterance_t* match; 
+} recog_entry_t;
+
 // === Public API ===
 
 // Call to get/free a context.
@@ -87,6 +94,16 @@ void tinysr_feed_input(tinysr_ctx_t* ctx, samp_t* samples, int length);
 
 // Call to trigger utterance detection.
 void tinysr_detect_utterances(tinysr_ctx_t* ctx);
+
+// Add a recognition entry.
+// Call this to add a word to the vocabulary of the given context.
+// The name is the number you'd like to be given back when a successful recognition is made, and the utterance is the template to match against.
+int tinysr_add_recognition_entry(tinysr_ctx_t* ctx, int name, utterance_t* match);
+
+// Read and write CSV files containing an utterance.
+// The write function returns non-zero on error, but doesn't print anything.
+int write_feature_vector_csv(const char* path, utterance_t* utterance);
+utterance_t* read_feature_vector_csv(const char* path);
 
 // === Private functions ===
 

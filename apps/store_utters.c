@@ -47,23 +47,9 @@ int main(int argc, char** argv) {
 				snprintf(path, sizeof(path), "%s/utter_%i.csv", argv[1], number++);
 			} while (access(path, F_OK) != -1);
 			fprintf(stderr, "Writing feature vectors to: '%s'\n", path);
-			FILE* fp = fopen(path, "w");
-			if (fp == NULL) {
-				perror(path);
-				return 2;
-			}
 			utterance_t* utterance = list_pop_front(&ctx->utterance_list);
-			int i;
-			for (i = 0; i < utterance->length; i++) {
-				// Write the feature vector to stdout as CSV.
-				feature_vector_t* fv = &utterance->feature_vectors[i];
-				fprintf(fp, "%f", fv->log_energy);
-				int j;
-				for (j = 0; j < 13; j++)
-					fprintf(fp, ",%f", fv->cepstrum[j]);
-				fprintf(fp, "\n");
-			}
-			fclose(fp);
+			if (write_feature_vector_csv(path, utterance))
+				perror(path);
 			free(utterance->feature_vectors);
 			free(utterance);
 		}
