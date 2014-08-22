@@ -44,7 +44,7 @@ int main(int argc, char** argv) {
 			int number = 0;
 			char path[512];
 			do {
-				snprintf(path, sizeof(path), "%s/utter_%i.csv", argv[1], number++);
+				snprintf(path, sizeof(path), "%s/utter_%04i.csv", argv[1], number++);
 			} while (access(path, F_OK) != -1);
 			fprintf(stderr, "Writing feature vectors to: '%s'\n", path);
 			utterance_t* utterance = list_pop_front(&ctx->utterance_list);
