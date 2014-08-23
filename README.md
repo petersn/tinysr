@@ -38,18 +38,18 @@ On systems supporting ALSA, I recommend the following command to produce such ra
 We will assume you have decided upon such a command, and will refer to it as `<audio>`.
 To build a speech model for TinySR, begin by deciding on your vocabulary.
 Once you've decided, make a directory for each word.
-In this example, ``up'' and ``down'' are the vocabulary.
+In this example, "up" and "down" are the vocabulary.
 First, run:
 
 	<audio> | ./apps/store_utters.app data/up
 
-Say the word ``up'' approximately one hundred times, with long enough spaces in between that the app doesn't get confused.
-Naturally, repeat this process for ``down'' into a separate directory.
+Say the word "up" approximately one hundred times, with long enough spaces in between that the app doesn't get confused.
+Naturally, repeat this process for "down" into a separate directory.
 Once you're done with this, run:
 
 	python scripts/model_gen.py data/up up_model
 
-And again, the same for ``down.''
+And again, the same for "down".
 To produce an overall speech model, you need merely concatenate the files for the individual words in the vocabulary.
 Thus:
 
