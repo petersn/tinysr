@@ -19,9 +19,9 @@
 #endif
 
 // The log energy of the frame must exceed the noise floor estimate by this much to trigger excitement, which triggers utterance detection.
-#define UTTERANCE_START_ENERGY_THRESHOLD 5.0
+#define UTTERANCE_START_ENERGY_THRESHOLD 2.0
 // Alternatively, the log energy must NOT exceed the noise floor by this much to trigger boredom, which ends an utterance.
-#define UTTERANCE_STOP_ENERGY_THRESHOLD 3.0
+#define UTTERANCE_STOP_ENERGY_THRESHOLD 1.0
 // The state machine must get excitement this many frames in a row to trigger an utterance.
 #define UTTERANCE_START_LENGTH 10
 // And, to end an utterance, the state machine must get boredom this many frames in a row.
