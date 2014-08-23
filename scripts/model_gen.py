@@ -132,17 +132,11 @@ def build_model_from_dir(name, utters_path):
 
 	return utters, model
 
-print "Building 'one' model."
-ones, one_model = build_model_from_dir("one", "../data/one")
-print "Building 'two' model."
-twos, two_model = build_model_from_dir("two", "../data/two")
+if len(sys.argv) != 4:
+	print "Usage: model_gen.py <word_name> <directory/with/utterances> <output_model>"
+	exit(1)
 
-one_model.write_to_file("one_model")
-two_model.write_to_file("two_model")
-
-print "Beginning cross validation."
-for i in xrange(10):
-	one, two = random.choice(ones), random.choice(twos)
-	print "One-model LLs:", one_model.ll(one), one_model.ll(two)
-	print "Two-model LLs:", two_model.ll(one), two_model.ll(two)
+word_name, input_path, output_path = sys.argv[1:]
+utters, model = build_model_from_dir(word_name, input_path)
+model.write_to_file(output_path)
 
