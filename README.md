@@ -10,14 +10,14 @@ The goal is to provide the following features:
 * Lean, readable source with absolutely no external dependencies.
 * Very easy API for both real-time and one-shot recognition.
 * Real-time low latency performance, and utterance detection.
-* Easy non-expert vocabulary training, and good speaker independence.
+* User friendly vocabulary training, and good speaker independence.
 
 Currently the recognition pipeline looks like:
 * Generic audio processing (resampling filter, bringing input to 16 kHz)
 * ES 201 108 feature extraction, to log energy + 13 cepstral components.
 * Utterance detection, followed by utterance level Cepstral Mean Normalization.
-* Gaussian mixture models. (Unimplemented.)
-* Dynamic Time Warping to match against the vocabulary. (Unimplemented.)
+* Maximum likelihood multivariate Gaussian models.
+* Dynamic Time Warping to match against the vocabulary.
 
 If you use my code, I'd love it if you dropped me a line at <snp@mit.edu>.
 

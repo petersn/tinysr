@@ -1,7 +1,7 @@
 #! /usr/bin/python
 
 import numpy
-import os, sys, math, random
+import os, sys, math, random, struct
 
 class MultivariateGaussianModel:
 	def __init__(self, vecs):
@@ -20,13 +20,10 @@ class MultivariateGaussianModel:
 			# http://en.wikipedia.org/wiki/Estimation_of_covariance_matrices#Maximum-likelihood_estimation_for_the_multivariate_normal_distribution
 			# http://en.wikipedia.org/wiki/Multivariate_normal_distribution#Estimation_of_parameters
 			self.covariance = sum(numpy.outer(v, v) for v in vecs) / len(vecs)
-#			self.covariance += numpy.ones(len(vecs[0])) * 1
-#			print " ".join("%.2f" % i for i in numpy.linalg.eig(self.covariance)[0])
 		# covar_inv corresponds to $\Sigma^{-1}$ from the Wikipedia article.
 		self.covar_inv = numpy.linalg.inv(self.covariance)
 		# This is the log likelihood offset, corresponding to the $\det(\Sigma)^{-1/2}$ factor from Wikipedia.
-#		self.ll_const = -0.5 * math.log(numpy.linalg.det(self.covariance))
-		self.ll_const = 0.0
+		self.ll_const = -0.5 * math.log(numpy.linalg.det(self.covariance))
 
 	def ll(self, datum):
 		# Compute the log likelihood of a datum matching the model.
@@ -34,8 +31,8 @@ class MultivariateGaussianModel:
 		return self.ll_const - 0.5 * datum.dot(self.covar_inv.dot(datum))
 
 class Model:
-	def __init__(self, stacks):
-		self.stacks = stacks
+	def __init__(self, name, stacks):
+		self.name, self.stacks = name, stacks
 
 	def build_model(self):
 		self.template = [MultivariateGaussianModel(stack) for stack in self.stacks]
@@ -60,16 +57,46 @@ class Model:
 	def ll(self, utterance):
 		return self.dynamic_time_warping(utterance)[0]
 
+	def write_to_file(self, path):
+		# Write out the model to a file.
+		with open(path, "w") as f:
+			# Write the model name out.
+			f.write(struct.pack("<I", len(self.name)) + self.name)
+			# Write out how long the template is.
+			f.write(struct.pack("<I", len(self.template)))
+			for gaussian in self.template:
+				# Write out the log likelihood offset for the entry.
+				f.write(struct.pack("<f", gaussian.ll_const))
+				# Write out the mean.
+				f.write(struct.pack("<13f", *gaussian.mean))
+				# Write out the inverse covariance matrix.
+				for row in gaussian.covar_inv: 
+					f.write(struct.pack("<13f", *row))
+
+	@staticmethod
+	def read_from_file(self, path):
+		# TODO: Finish this.
+		with open(path) as f:
+			name_length, = struct.unpack("<I", f.read(4))
+			name = f.read(name_length)
+			template_length, = struct.unpack("<I", f.read(4))
+			template = []
+			for i in xrange(template_length):
+				pass
+
 def read_in_utterance(path):
 	fvs = []
 	with open(path) as f:
 		for line in f.readlines():
 			line = line.strip()
 			if not line: continue
+			# The [1:] skips the log energy entry.
 			fvs.append(numpy.array(map(float, line.split(","))[1:]))
+	# Make sure each feature vector has 13 coefficients.
+	assert len(fvs[0]) == 13
 	return fvs
 
-def build_model_from_dir(utters_path):
+def build_model_from_dir(name, utters_path):
 	# Load up all the utterances in the input directory.
 	utters = []
 	for path in os.listdir(utters_path):
@@ -79,14 +106,16 @@ def build_model_from_dir(utters_path):
 	l = list(sorted(utters, key=len))
 	candidate = l[len(l)/2]
 	print "Lengths:", min(map(len, utters)), len(candidate), max(map(len, utters))
-	model = Model([[fv] for fv in candidate])
+	model = Model(name, [[fv] for fv in candidate])
 	model.build_model()
 
 	# Start iterating, making new models.
-	for round_num in xrange(5):
+	old_error, round_num = float("-inf"), 0
+	while True:
 		print "Building round %i model." % round_num
+		round_num += 1
 		# Make a model with the same number of stacks as in our previous model.
-		new_model = Model([[] for i in xrange(len(model.template))])
+		new_model = Model(name, [[] for i in xrange(len(model.template))])
 		total_fit_error = 0.0
 		for u in utters:
 			ll, path = model.dynamic_time_warping(u)
@@ -96,14 +125,20 @@ def build_model_from_dir(utters_path):
 				new_model.stacks[y].append(u[x])
 		new_model.build_model()
 		print "Built %i-model with error: %f" % (len(new_model.template), total_fit_error)
+		# Run to convergence.
+		if total_fit_error <= old_error: break
+		old_error = total_fit_error
 		model = new_model
 
 	return utters, model
 
 print "Building 'one' model."
-ones, one_model = build_model_from_dir("../data/one")
+ones, one_model = build_model_from_dir("one", "../data/one")
 print "Building 'two' model."
-twos, two_model = build_model_from_dir("../data/two")
+twos, two_model = build_model_from_dir("two", "../data/two")
+
+one_model.write_to_file("one_model")
+two_model.write_to_file("two_model")
 
 print "Beginning cross validation."
 for i in xrange(10):

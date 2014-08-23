@@ -78,9 +78,21 @@ typedef struct {
 } utterance_t;
 
 typedef struct {
-	int name;
-	int length;
-	utterance_t* match; 
+	// The log-likelihood of data matching this model is:
+	// log_likelihood_offset - 0.5 * (cepstrum - cepstrum_mean)^T * cepstrum_inverse_covariance * (cepstrum - cepstrum_mean)
+	// Where cepstrum is an input 13-column vector and cepstrum_inverse_covariance is a 13x13 matrix.
+	// Also note that covariance matrices are symmetric, so there is no row/column major order issue
+	// to worry about with the cepstrum_inverse_covariance.
+	float log_likelihood_offset;
+	float cepstrum_mean[13];
+	float cepstrum_inverse_covariance[169];
+} gaussian_t;
+
+typedef struct {
+	int index;
+	char* name;
+	int model_template_length;
+	gaussian_t* model_template; 
 } recog_entry_t;
 
 // === Public API ===
@@ -95,10 +107,9 @@ void tinysr_feed_input(tinysr_ctx_t* ctx, samp_t* samples, int length);
 // Call to trigger utterance detection.
 void tinysr_detect_utterances(tinysr_ctx_t* ctx);
 
-// Add a recognition entry.
+// Add some recognition entries.
 // Call this to add a word to the vocabulary of the given context.
-// The name is the number you'd like to be given back when a successful recognition is made, and the utterance is the template to match against.
-int tinysr_add_recognition_entry(tinysr_ctx_t* ctx, int name, utterance_t* match);
+int tinysr_load_model(tinysr_ctx_t* ctx, const char* path);
 
 // Read and write CSV files containing an utterance.
 // The write function returns non-zero on error, but doesn't print anything.
