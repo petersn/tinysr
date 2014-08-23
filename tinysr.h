@@ -107,6 +107,9 @@ void tinysr_feed_input(tinysr_ctx_t* ctx, samp_t* samples, int length);
 // Call to trigger utterance detection.
 void tinysr_detect_utterances(tinysr_ctx_t* ctx);
 
+// Call to trigger recognition on detected utterances.
+void tinysr_recognize_utterances(tinysr_ctx_t* ctx);
+
 // Add some recognition entries.
 // Call this to add a word to the vocabulary of the given context.
 int tinysr_load_model(tinysr_ctx_t* ctx, const char* path);
@@ -118,14 +121,13 @@ utterance_t* read_feature_vector_csv(const char* path);
 
 // === Private functions ===
 
-// This function runs recognition on a detected utterance.
-// You should never have to call this function directly.
-void tinysr_process_utterance(tinysr_ctx_t* ctx);
-
 // Initiates a feature extraction run on the contents of input_buffer.
 // This function is called automatically by tinysr_feed_input whenever the
 // buffer is full, so you should never have to call it yourself.
 void tinysr_process_frame(tinysr_ctx_t* ctx);
+
+float gaussian_log_likelihood(gaussian_t* gauss, feature_vector_t* fv);
+float compute_dynamic_time_warping(recog_entry_t* match, utterance_t* utterance);
 
 // This function is used internally for the FFT computation.
 void tinysr_fft_dit(float* in_real, float* in_imag, int length, int stride, float* out_real, float* out_imag);
