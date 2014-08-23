@@ -280,6 +280,7 @@ void tinysr_recognize_utterances(tinysr_ctx_t* ctx) {
 		int best_index = -1;
 		// Again, I'd like to set this to negative inf, but it's hard to do that portably. :(
 		float best_score = -1e30;
+		const char* best_name = "???";
 		// Match the utterance against all current recognition entries.
 		list_node_t* re = ctx->recog_entry_list.head;
 		while (re != NULL) {
@@ -287,11 +288,12 @@ void tinysr_recognize_utterances(tinysr_ctx_t* ctx) {
 			if (new_score > best_score) {
 				best_index = ((recog_entry_t*)re->datum)->index;
 				best_score = new_score;
+				best_name = ((recog_entry_t*)re->datum)->name;
 			}
 			re = re->next;
 		}
 		// We've found a winner!
-		printf("Winner: (%f) %i\n", best_score, best_index);
+		printf("Winner: (%f) %s\n", best_score, best_name);
 		free(utter->feature_vectors);
 		free(utter);
 	}
@@ -405,7 +407,7 @@ float gaussian_log_likelihood(gaussian_t* gauss, feature_vector_t* fv) {
 float compute_dynamic_time_warping(recog_entry_t* match, utterance_t* utterance) {
 	// Do dynamic programming to figure out the minimum path cost.
 	float* dp_array = malloc(sizeof(float) * match->model_template_length);
-	float diagonal_value;
+	float diagonal_value = 0.0;
 	int i, j;
 	for (i = 0; i < utterance->length; i++) {
 		for (j = 0; j < match->model_template_length; j++) {
@@ -455,7 +457,7 @@ int tinysr_load_model(tinysr_ctx_t* ctx, const char* path) {
 		// Read in the length of the name of the word we're loading in a model for.
 		READ_INTO(&name_length, 4)
 		// Read in the name.
-		name_str = malloc(name_length + 1);
+		recog_entry->name = name_str = malloc(name_length + 1);
 		free_point++;
 		READ_INTO(name_str, name_length)
 		// Read in the length of model.
