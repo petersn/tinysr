@@ -19,22 +19,22 @@
 #endif
 
 // The log energy of the frame must exceed the noise floor estimate by this much to trigger excitement, which triggers utterance detection.
-#define UTTERANCE_START_ENERGY_THRESHOLD 3.0
+#define UTTERANCE_START_ENERGY_THRESHOLD 5.0
 // Alternatively, the log energy must NOT exceed the noise floor by this much to trigger boredom, which ends an utterance.
 #define UTTERANCE_STOP_ENERGY_THRESHOLD 1.0
 // The state machine must get excitement this many frames in a row to trigger an utterance.
-#define UTTERANCE_START_LENGTH 6
+#define UTTERANCE_START_LENGTH 2
 // And, to end an utterance, the state machine must get boredom this many frames in a row.
-#define UTTERANCE_STOP_LENGTH 6
+#define UTTERANCE_STOP_LENGTH 4
 // When an utterance is detected, this many frames before the beginning of the detection
 // are also scooped up. This is to take into account the fact that most utterances begin
 // with quiet intro dynamics that are hard to pick up otherwise. Note: This doesn't take
 // into account UTTERANCE_START_LENGTH, so if this value is zero, then UTTERANCE_START_LENGTH-1
 // exciting frames will be missed.
-#define UTTERANCE_FRAMES_BACKED_UP 12
+#define UTTERANCE_FRAMES_BACKED_UP 8
 // Again, because of the large amount of silence required to end an utterance, this is the
 // number of frames dropped off of the end of an utterance, to avoid collecting silence.
-#define UTTERANCE_FRAMES_DROPPED_FROM_END 3
+#define UTTERANCE_FRAMES_DROPPED_FROM_END 1
 
 void list_append_back(list_t* list, void* datum) {
 	list->length++;
@@ -281,6 +281,7 @@ void tinysr_recognize_utterances(tinysr_ctx_t* ctx) {
 		// Again, I'd like to set this to negative inf, but it's hard to do that portably. :(
 		float best_score = -1e30;
 		const char* best_name = "???";
+		const char* second_best_name = "???";
 		// Match the utterance against all current recognition entries.
 		list_node_t* re = ctx->recog_entry_list.head;
 		while (re != NULL) {
@@ -288,12 +289,13 @@ void tinysr_recognize_utterances(tinysr_ctx_t* ctx) {
 			if (new_score > best_score) {
 				best_index = ((recog_entry_t*)re->datum)->index;
 				best_score = new_score;
+				second_best_name = best_name;
 				best_name = ((recog_entry_t*)re->datum)->name;
 			}
 			re = re->next;
 		}
 		// We've found a winner!
-		printf("Winner: (%f) %s\n", best_score, best_name);
+		printf("Winner: (%f) %s, %s\n", best_score, best_name, second_best_name);
 		free(utter->feature_vectors);
 		free(utter);
 	}
