@@ -1,5 +1,5 @@
 \documentclass{article}
-\usepackage{amsmath,tikz,hyperref}
+\usepackage{amsmath,tikz,hyperref,color}
 \usepackage[margin=4cm]{geometry}
 \usetikzlibrary{shapes,arrows,fit}
 \title{TinySR}
@@ -43,7 +43,7 @@ The TinySR processing chain consists of a bunch of steps, summarized in this dia
 	\node [config, left of=utter, node distance=2.5cm] (mode) {\phantom{X}Mode\phantom{X}};
 	\node [block, text width=4.5em, right of=utter] (cmn) {Subtract Cepstral Mean};
 	\node [block, right of=cmn] (dtw) {Dynamic Time Warping};
-	\node [config, right of=dtw] (model) {Speech Model};
+	\node [config, right of=dtw, node distance=3.2cm] (model) {Acoustic Model};
 	\node [io, below of=dtw, node distance=2cm] (output) {Results Vector};
 	\path [line] (audio) -> (resample);
 	\path [line] (resample) -> (offset);
@@ -82,24 +82,26 @@ Currently the resampling is achieved via linear interpolation for simplicity, wh
 You can play wih \texttt{playground/resample.py} to resample audio with the same linear interpolation filter, to hear what sorts of distortions it introduces.
 
 \subsubsection{ES 201 108 Feature Extraction}
-These steps are well described in \href{http://www.etsi.org/deliver/etsi_es/201100_201199/201108/01.01.02_60/es_201108v010102p.pdf}{the original spec}, but also briefly described here:
+These steps are well described in \href{http://www.etsi.org/deliver/etsi_es/201100_201199/201108/01.01.02_60/es_201108v010102p.pdf}{the original spec}, but also briefly described here.
+\newcommand{\linear}{{\small\color{red}(L)}}
+Each step that is linear is marked with \linear.
 \renewcommand{\labelenumi}{\textbf{\Roman{enumi}.}}%
 \begin{enumerate}
-\item An LTI DC rejection filter is applied to the input audio.
-\item The audio is framed in a ``sliding window'' fashion, by producing a frame of 400 samples (25 ms) every 160 samples (10 ms).
+\item \linear{} An LTI DC rejection filter is applied to the input audio.
+\item \linear{} The audio is framed in a ``sliding window'' fashion, by producing a frame of 400 samples (25 ms) every 160 samples (10 ms).
 This means that each frame overlaps the previous by 240 samples (15 ms).
 All further steps apply to each frame individually.
 \item The log of the sum of the squares of the samples is computed, and is the ``log energy'' $E$ for the frame. (Depicted as the center input to ``Utterance Extraction,'' and the input to ``Noise Floor Estimation.'')
-\item An LTI high-pass (pre-emphasis) filter is applied. The filter simply subtracts 97\% of each sample from the next.
-\item The frame is \href{http://en.wikipedia.org/wiki/Window_function#Hamming_window}{Hamming windowed}.
-\item The frame is zero padded with 112 zero samples, to extend it out to 512 samples.
-\item An FFT is applied to the extended frame, then the absolute value is taken, to produce 512 real samples.
+\item \linear{} An LTI high-pass (pre-emphasis) filter is applied. The filter simply subtracts 97\% of each sample from the next.
+\item \linear{} The frame is \href{http://en.wikipedia.org/wiki/Window_function#Hamming_window}{Hamming windowed}.
+\item \linear{} The frame is zero padded with 112 zero samples, to extend it out to 512 samples.
+\item \linear{} An FFT is applied to the extended frame, then the absolute value is taken, to produce 512 real samples.
 As the input data is pure real, Hermitian symmetry is present in the FFT output.
 Thus, after the absolute value is taken, regular symmetry is present in the results, meaning that FFT bin $n$ is equal to FFT bin $512 - n$.
 Therefore, all but the first 257 FFT bins are ignored after the transform.
-\item Twenty three overlaping triangular filters are dotted against the resulting FFT bins, to produce 23 Mel amplitude coefficients.
+\item \linear{} Twenty three overlaping triangular filters are dotted against the resulting FFT bins, to produce 23 Mel amplitude coefficients.
 \item The natural log of each Mel amplitude coefficient is taken, to produce a Mel energy coefficient.
-\item A DCT-inspired linear transform of these coefficients is taken, producing 13 Mel cepstral coefficients, $C_i$ for $0 \le i \le 12$. (Depicted as the rightmost input to ``Utterance Extraction.'')
+\item \linear{} A DCT-inspired linear transform of these coefficients is taken, producing 13 Mel cepstral coefficients, $C_i$ for $0 \le i \le 12$. (Depicted as the rightmost input to ``Utterance Extraction.'')
 \end{enumerate}
 
 \subsubsection{Noise Floor Estimation}
@@ -139,11 +141,59 @@ Observe that cepstrum is a linear transform on the log of the Fourier transform 
 Therefore, adding cepstra results in Fourier space multiplication, which is convolution in time domain.
 Thus, by subtracting out the mean cepstrum, we are effectively deconvolving the source signal.
 Therefore, convolving the source signal with any finite impulse response kernel that fits within the periodicity of a single frame's FFT causes no net effect on the post-mean-normalization cepstrum.
+
 This is a fantastic result, as the effects of the transfer function of a microphone are almost certainly very closely approximated as convolution with a small FIR filter.
 Although this step takes only ten lines of code, it makes TinySR robust against differences in audio setup and inter-speaker variations.
-%This effectively deconvolves the utterance
 
 \subsubsection{Dynamic Time Warping}
-TODO: Document.
+Here we match up an utterance against an acoustic model.
+A model consists of a time series of multivariate Gaussian distributions, representing a prior on the cepstrum expected to form a given word.
+Each Gaussian is characterized by a 13 dimensional mean $\mu$ and a $13\times13$ covariance matrix $\Sigma$.
+We will denote the log likelihood of a cepstral column vector $C$ matching a model $(\mu, \Sigma)$ by $P\left(C, (\mu, \Sigma)\right)$, as given by:
+\begin{align*}
+P\left(C, (\mu, \Sigma)\right) = - \frac12 \log | \Sigma | - \frac12 (C - \mu)^T \Sigma^{-1} (C - \mu)
+\end{align*}
+
+Thus, we have a way of matching a vector against a model.
+We can therefore compute an overall log likelihood for a time series of cepstral feature vectors $C_i$ matching a model $(\mu_i, \Sigma_i)$ by computing $\sum_i P(C_i, (\mu_i, \Sigma_i))$.
+However, this requires that the model be of exactly the same length as the input speech, and further that the speaker's utterance exactly lines up against the model.
+
+To fix these issues, we perform dynamic time warping, which is consists of finding a minimum cost path through the matrix $A$ with $A_{ij} = P(C_i, (\mu_j, \Sigma_j))$.
+The path may only make three kinds of moves:
+\begin{enumerate}
+\item Diagonally, from $(i, j)$ to $(i+1, j+1)$.
+This corresponds to matching feature $i$ in the utterance directly against Gaussian $j$ in the model.
+\item Horiztonally, from $(i, j)$ to $(i+1, j)$.
+This corresponds to the speaker speaking slowing during frames $i$, and $i+1$, and them both being matched against model Gaussian $j$.
+\item Vertically, from $(i, j)$ to $(i, j+1)$.
+This corresponds to the speaker speaking quickly during frame $i$, and it being matched against both model Gaussians $j$ and $j+1$.
+\end{enumerate}
+Further, we demand that our path starts at $(i, j) = (1, 1)$, and that it ends at $(i, j) = (n, m)$, where there are $n$ frames in our utterance and $m$ frames (Gaussians) in our model.
+This guarantees that the utterance's beginning matches up against the model's beginning, and the same for the end.
+
+\section{Training}
+To train a model for a given word, we need merely produce a series of Gaussian distributions characterizing the time dynamics of the cepstrum.
+To do this, we start with an input corpus of one or more speakers saying the same word over and over, and choose an urtterance of median length.
+Our initial model consists simply of the series of Guassians whose means are the cepstral vectors in the chosen utterance, and with identity covaraiance.
+
+Next, we refine this model to convergence, by the following steps:
+\begin{enumerate}
+\item Line every word in our corpus up against our model using DTW.
+\item Find all the cepstral feature vectors that were matched against frame $i$ in the model, and use these to estimate the next Gaussian for frame $i$ in our iterated model.
+\item Repeat if the generated model is different from the previous model.
+\end{enumerate}
+In practice, this method tends to converge within five or six iterations, and is extremely stable to variations in some initial parameters.
+For example, which word of median length selected hardly matters, and the identity covariance matrix can be replaced by almost anything else non-degenerate.
+The only important dependence that is carried forwards from the initial model to the final model is the length, which cannot change throughout the refinement; thus, why we select a median length utterance to start with.
+
+\subsection{Gaussian Fitting}
+One step glossed over above is how we fit a Gaussian to a set of $N$ cepstral observation $C_i$ for $1 \le i \le N$.
+Each observation $C_i$ is, as always, a 13 dimensional vector, describing the harmonic content of frame of time.
+First, the sample mean is computed, $\mu = \sum_{i=1}^N C_i / N$.
+Next, the sample covariance is computed, given by:
+\begin{align*}
+\Sigma = \frac1{N-1} \sum_{i=1}^N (C_i - \mu) (C_i - \mu)^T
+\end{align*}
+In short, $\mu$ is the expected value, and $\Sigma$ is the expected self-outer-product over the meanless data.
 
 \end{document}
