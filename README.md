@@ -35,6 +35,10 @@ On systems supporting ALSA, I recommend the following command to produce such ra
 
 	arecord -r 16000 -c 1 -f S16_LE
 
+Alternatively, if you have an audio file you'd like to use, the following command will convert it to appropriate raw audio and stream it to stdout:
+
+	ffmpeg -i <file> -y -ar 16000 -ac 1 -f s16le -acodec pcm_s16le /dev/stdout
+
 We will assume you have decided upon such a command, and will refer to it as `<audio>`.
 To build a speech model for TinySR, begin by deciding on your vocabulary.
 Once you've decided, make a directory for each word.
