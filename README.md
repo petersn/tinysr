@@ -7,7 +7,7 @@ You can either statically link, dynamically link, or directly include the pair o
 No special libraries are used or dependencies required; everything is here.
 
 The goal is to provide the following features:
-* Lean, readable source with absolutely no external dependencies.
+* Lean, readable source with just absolutely no dependencies beyond the C standard library.
 * Very easy API for both real-time and one-shot recognition.
 * Real-time low latency performance, and utterance detection.
 * User friendly vocabulary training.
