@@ -245,7 +245,7 @@ void tinysr_detect_utterances(tinysr_ctx_t* ctx) {
 				for (j = 0; j < 13; j++)
 					utterance_fvs[i].cepstrum[j] -= cepstral_mean[j];
 			// Build up an utterance object.
-			utterance_t* utterance = malloc(sizeof(utterance));
+			utterance_t* utterance = malloc(sizeof(utterance_t));
 			utterance->length = utterance_length;
 			utterance->feature_vectors = utterance_fvs;
 			// And append it into the list of pending utterances, for further processing.
