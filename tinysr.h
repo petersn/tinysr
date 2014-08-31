@@ -63,6 +63,8 @@ typedef struct {
 	int utterance_state;
 	list_t utterance_list;
 	list_t recog_entry_list;
+	char** word_names;
+	list_t results_list;
 } tinysr_ctx_t;
 
 typedef struct {
@@ -96,11 +98,21 @@ typedef struct {
 	gaussian_t* model_template; 
 } recog_entry_t;
 
+typedef struct {
+	int word_index;
+	float score;
+} result_t;
+
 // === Public API ===
 
 // Call to get/free a context.
 tinysr_ctx_t* tinysr_allocate_context(void);
 void tinysr_free_context(tinysr_ctx_t* ctx);
+
+// Convenience function call, equivalent to tinysr_feed_input(), but then runs
+// tinysr_detect_utterances() and tinysr_recognize_utterances(), and then returns
+// the number of pending recognition results.
+int tinysr_recognize(tinysr_ctx_t* ctx, samp_t* samples, int length);
 
 // Call to pass input samples.
 void tinysr_feed_input(tinysr_ctx_t* ctx, samp_t* samples, int length);
@@ -110,6 +122,11 @@ void tinysr_detect_utterances(tinysr_ctx_t* ctx);
 
 // Call to trigger recognition on detected utterances.
 void tinysr_recognize_utterances(tinysr_ctx_t* ctx);
+
+// Call to get one recognition result.
+// Returns 1 if a result was gotten, 0 otherwise.
+// It's safe to set either or both pointers to NULL.
+int tinysr_get_result(tinysr_ctx_t* ctx, int* word_index, float* score);
 
 // Add some recognition entries.
 // Call this to add a word to the vocabulary of the given context.

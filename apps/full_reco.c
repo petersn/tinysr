@@ -33,6 +33,7 @@ int main(int argc, char** argv) {
 	samp_t array[READ_SAMPS];
 	keep_reading = 1;
 	signal(SIGINT, sig_handler);
+	int state = 0;
 	while (keep_reading) {
 		// Try to read in samples.
 		size_t samples_read = fread(array, sizeof(samp_t), READ_SAMPS, stdin);
@@ -41,6 +42,16 @@ int main(int argc, char** argv) {
 		tinysr_feed_input(ctx, array, (int)samples_read);
 		tinysr_detect_utterances(ctx);
 		tinysr_recognize_utterances(ctx);
+		int word_index;
+		float score;
+		if (state == 0 && ctx->utterance_state == 1)
+			printf("Utterance detected.\n");
+		if (state == 1 && ctx->utterance_state == 0)
+			printf("Utterance over.\n");
+		state = ctx->utterance_state;
+		// Get back results.
+		while (tinysr_get_result(ctx, &word_index, &score))
+			printf("=== %s (%.3f)\n", ctx->word_names[word_index], score);
 	}
 	fprintf(stderr, "Freeing context. Processed %i samples.\n", ctx->processed_samples);
 	tinysr_free_context(ctx);

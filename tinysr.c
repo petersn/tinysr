@@ -25,7 +25,7 @@
 // The state machine must get excitement this many frames in a row to trigger an utterance.
 #define UTTERANCE_START_LENGTH 4
 // And, to end an utterance, the state machine must get boredom this many frames in a row.
-#define UTTERANCE_STOP_LENGTH 4
+#define UTTERANCE_STOP_LENGTH 10
 // When an utterance is detected, this many frames before the beginning of the detection
 // are also scooped up. This is to take into account the fact that most utterances begin
 // with quiet intro dynamics that are hard to pick up otherwise. Note: This doesn't take
@@ -34,7 +34,7 @@
 #define UTTERANCE_FRAMES_BACKED_UP 8
 // Again, because of the large amount of silence required to end an utterance, this is the
 // number of frames dropped off of the end of an utterance, to avoid collecting silence.
-#define UTTERANCE_FRAMES_DROPPED_FROM_END 1
+#define UTTERANCE_FRAMES_DROPPED_FROM_END 7
 
 void list_append_back(list_t* list, void* datum) {
 	list->length++;
@@ -111,6 +111,10 @@ tinysr_ctx_t* tinysr_allocate_context(void) {
 	ctx->utterance_list = (list_t){0};
 	// List of matching templates to recognize against.
 	ctx->recog_entry_list = (list_t){0};
+	// Table of word names, as indexed by word indices.
+	ctx->word_names = NULL;
+	// List of recognition results.
+	ctx->results_list = (list_t){0};
 
 	return ctx;
 }
@@ -135,6 +139,9 @@ void tinysr_free_context(tinysr_ctx_t* ctx) {
 		free(recog_entry->model_template);
 		free(recog_entry);
 	}
+	// Free any results.
+	while (ctx->results_list.length)
+		free(list_pop_front(&ctx->results_list));
 	free(ctx);
 }
 
@@ -186,11 +193,6 @@ void tinysr_detect_utterances(tinysr_ctx_t* ctx) {
 		else break;
 		// Now we processes this new feature vector.
 		feature_vector_t* fv = (feature_vector_t*) ctx->current_fv->datum;
-#ifdef TINYSR_DEBUG
-		static int counter = 0;
-		if (counter++ % 30 == 0)
-			printf(":: %.2f - %.2f\n", fv->noise_floor, fv->log_energy);
-#endif
 		// If the new FV's energy exceeds the threshold, become more excited. Otherwise, reset.
 		if (fv->log_energy > fv->noise_floor + UTTERANCE_START_ENERGY_THRESHOLD)
 			ctx->excitement += 1.0;
@@ -205,7 +207,6 @@ void tinysr_detect_utterances(tinysr_ctx_t* ctx) {
 		if (ctx->utterance_state == 0) {
 			// If we've become excited some number of feature vectors in a row, then we detect an utterance.
 			if (ctx->excitement >= UTTERANCE_START_LENGTH) {
-				printf("Utterance detected.\n");
 				ctx->utterance_state = 1;
 				ctx->utterance_start = ctx->current_fv;
 				// Now back up some number of FVs. (See #defs at top for explanation.)
@@ -215,7 +216,6 @@ void tinysr_detect_utterances(tinysr_ctx_t* ctx) {
 						ctx->utterance_start = ctx->utterance_start->prev;
 			}
 		} else if (ctx->boredom >= UTTERANCE_STOP_LENGTH) {
-			printf("Utterance over.\n");
 			// Now back up some frames from the end.
 			int i;
 			list_node_t* utterance_end = ctx->current_fv;
@@ -248,9 +248,6 @@ void tinysr_detect_utterances(tinysr_ctx_t* ctx) {
 			utterance_t* utterance = malloc(sizeof(utterance));
 			utterance->length = utterance_length;
 			utterance->feature_vectors = utterance_fvs;
-#ifdef TINYSR_DEBUG
-			printf("Got utterance of length: %i\n", utterance->length);
-#endif
 			// And append it into the list of pending utterances, for further processing.
 			list_append_back(&ctx->utterance_list, utterance);
 			// Finally, reset our state machine.
@@ -280,8 +277,6 @@ void tinysr_recognize_utterances(tinysr_ctx_t* ctx) {
 		int best_index = -1;
 		// Again, I'd like to set this to negative inf, but it's hard to do that portably. :(
 		float best_score = -1e30;
-		const char* best_name = "???";
-		const char* second_best_name = "???";
 		// Match the utterance against all current recognition entries.
 		list_node_t* re = ctx->recog_entry_list.head;
 		while (re != NULL) {
@@ -289,16 +284,32 @@ void tinysr_recognize_utterances(tinysr_ctx_t* ctx) {
 			if (new_score > best_score) {
 				best_index = ((recog_entry_t*)re->datum)->index;
 				best_score = new_score;
-				second_best_name = best_name;
-				best_name = ((recog_entry_t*)re->datum)->name;
 			}
 			re = re->next;
 		}
 		// We've found a winner!
-		printf("Winner: (%f) %s, %s\n", best_score, best_name, second_best_name);
+		result_t* result = malloc(sizeof(result_t));
+		result->word_index = best_index;
+		result->score = best_score;
+		list_append_back(&ctx->results_list, result);
 		free(utter->feature_vectors);
 		free(utter);
 	}
+}
+
+int tinysr_get_result(tinysr_ctx_t* ctx, int* word_index, float* score) {
+	// Fail if there are no results to write out.
+	if (ctx->results_list.length == 0)
+		return 0;
+	result_t* result = list_pop_front(&ctx->results_list);
+	// Copy over the data.
+	if (word_index != NULL)
+		*word_index = result->word_index;
+	if (score != NULL)
+		*score = result->score;
+	// Free, and report success.
+	free(result);
+	return 1;
 }
 
 // Private function: Do not call directly!
@@ -440,6 +451,7 @@ float compute_dynamic_time_warping(recog_entry_t* match, utterance_t* utterance)
 // Adds a entries to the recognizer, loaded from a model file, as generated by model_gen.py.
 // Returns the number of entries added, with -1 indicating an error.
 int tinysr_load_model(tinysr_ctx_t* ctx, const char* path) {
+	int i;
 	FILE* fp = fopen(path, "r");
 	if (fp == NULL)
 		return -1;
@@ -456,7 +468,7 @@ int tinysr_load_model(tinysr_ctx_t* ctx, const char* path) {
 		free_point = 0;
 		recog_entry = malloc(sizeof(recog_entry_t));
 		free_point++;
-		// Set the index to be the length of the current list -- this causes consecutive numbering.
+		// Set the index to be the length of the current list -- this causes consecutive numbering, starting at 0.
 		recog_entry->index = ctx->recog_entry_list.length;
 		// Read in the length of the name of the word we're loading in a model for.
 		READ_INTO(&name_length, 4)
@@ -472,7 +484,6 @@ int tinysr_load_model(tinysr_ctx_t* ctx, const char* path) {
 		// Allocate memory for the model.
 		recog_entry->model_template = malloc(sizeof(gaussian_t) * recog_entry->model_template_length);
 		free_point++;
-		int i;
 		for (i = 0; i < recog_entry->model_template_length; i++) {
 			gaussian_t* gauss = &recog_entry->model_template[i];
 			READ_INTO(&gauss->log_likelihood_offset, sizeof(float))
@@ -482,14 +493,26 @@ int tinysr_load_model(tinysr_ctx_t* ctx, const char* path) {
 		list_append_back(&ctx->recog_entry_list, recog_entry);
 		entries_read++;
 	}
-	return entries_read;
+	// Above we keep reading until we hit EOF, which causes an error, so therefore:
+	assert(0); // This should be unreachable!
 tinysr_load_model_error:
 	switch (free_point) {
 		case 3: free(recog_entry->model_template);
 		case 2: free(name_str);
 		case 1: free(recog_entry);
-		default: return entries_read;
+		default: break;
 	}
+	// Make a table containing all the word names.
+	// At this point we can't fail, so we don't need to deal with free_point anymore.
+	ctx->word_names = malloc(sizeof(char*) * entries_read);
+	// Fill in the word names.
+	i = 0;
+	list_node_t* re = ctx->recog_entry_list.head;
+	while (re != NULL) {
+		ctx->word_names[i++] = ((recog_entry_t*)re->datum)->name;
+		re = re->next;
+	}
+	return entries_read;
 }
 
 // Write out a CSV file containing a given utterance.
