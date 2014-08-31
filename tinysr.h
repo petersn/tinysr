@@ -47,6 +47,7 @@ typedef struct {
 	// It is safe to change this as frequently as you want.
 	int input_sample_rate;
 	tinysr_mode_t utterance_mode;
+	int do_downmix;
 
 	// Private:
 	int processed_samples;

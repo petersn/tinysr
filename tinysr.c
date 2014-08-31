@@ -76,6 +76,8 @@ tinysr_ctx_t* tinysr_allocate_context(void) {
 	ctx->input_sample_rate = 48000;
 	// By default, run in one shot mode.
 	ctx->utterance_mode = TINYSR_MODE_ONE_SHOT;
+	// By default, assume mono input. If this flag is set, then pairs of samples will be mixed together.
+	ctx->do_downmix = 0;
 	// Offset compensation running values.
 	ctx->offset_comp_prev_in = 0.0;
 	ctx->offset_comp_prev_out = 0.0;
@@ -164,6 +166,9 @@ void tinysr_feed_input(tinysr_ctx_t* ctx, samp_t* samples, int length) {
 	while (length--) {
 		// Read one sample in.
 		float raw_sample = (float)*samples++;
+		// If downmixing was requested, then the stereo input gets summed into mono.
+		if (ctx->do_downmix)
+			raw_sample += (float)*samples++;
 		ctx->processed_samples++;
 		// Now we apply the resampling filter, resampling from ctx->input_sample_rate to 16000 samples per second.
 		while (ctx->resampling_time_delta <= 1.0) {
