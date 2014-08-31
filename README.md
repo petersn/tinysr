@@ -51,18 +51,12 @@ Say the word "up" approximately one hundred times, with long enough spaces in be
 Naturally, repeat this process for "down" into a separate directory.
 Once you're done with this, run:
 
-	python scripts/model_gen.py up data/up up_model
-
-And again, the same for "down."
-To produce an overall speech model, you need merely concatenate the files for the individual words in the vocabulary.
-Thus:
-
-	cat up_model down_model > speech_model
+	python scripts/model_gen.py data/up data/down speech_model
 
 You can now test the recognizer on your model by running:
 
 	<audio> | ./apps/full_reco.app speech_model
 
-The words will be printed to you based on the names given as the first argument to `model_gen.py`.
+The words will be printed to you based on the names of the directories containing their utterances as passed to `model_gen.py`.
 Alternatively, if you're using the library's API, the names will be available in a table, but also as unambiguous indices.
 
