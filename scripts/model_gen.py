@@ -1,7 +1,7 @@
 #! /usr/bin/python
 
 import numpy
-import os, sys, math, random, struct
+import os, sys, math, random, struct, time
 
 class MultivariateGaussianModel:
 	def __init__(self, vecs):
@@ -57,21 +57,21 @@ class Model:
 	def ll(self, utterance):
 		return self.dynamic_time_warping(utterance)[0]
 
-	def write_to_file(self, path):
-		# Write out the model to a file.
-		with open(path, "w") as f:
-			# Write the model name out.
-			f.write(struct.pack("<I", len(self.name)) + self.name)
-			# Write out how long the template is.
-			f.write(struct.pack("<I", len(self.template)))
-			for gaussian in self.template:
-				# Write out the log likelihood offset for the entry.
-				f.write(struct.pack("<f", gaussian.ll_const))
-				# Write out the mean.
-				f.write(struct.pack("<13f", *gaussian.mean))
-				# Write out the inverse covariance matrix.
-				for row in gaussian.covar_inv: 
-					f.write(struct.pack("<13f", *row))
+	def write_to_file(self, f):
+		# Write the model name out.
+		f.write(struct.pack("<I", len(self.name)) + self.name)
+		# Write out the offset and slope coefficients.
+		f.write(struct.pack("<2f", self.ll_offset, self.ll_slope))
+		# Write out how long the template is.
+		f.write(struct.pack("<I", len(self.template)))
+		for gaussian in self.template:
+			# Write out the log likelihood offset for the entry.
+			f.write(struct.pack("<f", gaussian.ll_const))
+			# Write out the mean.
+			f.write(struct.pack("<13f", *gaussian.mean))
+			# Write out the inverse covariance matrix.
+			for row in gaussian.covar_inv: 
+				f.write(struct.pack("<13f", *row))
 
 	@staticmethod
 	def read_from_file(self, path):
@@ -105,14 +105,13 @@ def build_model_from_dir(name, utters_path):
 	# Start by generating a trivial model from a median length utterance.
 	l = list(sorted(utters, key=len))
 	candidate = l[len(l)/2]
-	print "Lengths:", min(map(len, utters)), len(candidate), max(map(len, utters))
+	print "Total utters:", len(utters), "Lengths:", min(map(len, utters)), len(candidate), max(map(len, utters))
 	model = Model(name, [[fv] for fv in candidate])
 	model.build_model()
 
 	# Start iterating, making new models.
 	old_error, round_num = float("-inf"), 0
 	while True:
-		print "Building round %i model." % round_num
 		round_num += 1
 		# Make a model with the same number of stacks as in our previous model.
 		new_model = Model(name, [[] for i in xrange(len(model.template))])
@@ -124,7 +123,7 @@ def build_model_from_dir(name, utters_path):
 			for x, y in path:
 				new_model.stacks[y].append(u[x])
 		new_model.build_model()
-		print "Built %i-model with error: %f" % (len(new_model.template), total_fit_error)
+		print "Round %i log likelihood: %f" % (round_num, total_fit_error)
 		# Run to convergence.
 		if total_fit_error <= old_error: break
 		old_error = total_fit_error
@@ -132,11 +131,52 @@ def build_model_from_dir(name, utters_path):
 
 	return utters, model
 
-if len(sys.argv) != 4:
-	print "Usage: model_gen.py <word_name> <directory/with/utterances> <output_model>"
+if len(sys.argv) == 1 or (len(sys.argv) == 2 and sys.argv[1] in ("-h", "--help")):
+	print "Usage: model_gen.py dir0 [dir1 ...] output_model"
+	print "Each directory is expected to contain utterances in CSV format."
+	print "A normalized model will be produced and written to output_model."
 	exit(1)
 
-word_name, input_path, output_path = sys.argv[1:]
-utters, model = build_model_from_dir(word_name, input_path)
-model.write_to_file(output_path)
+input_paths = sys.argv[1:-1]
+output_path = sys.argv[-1]
+models = []
+start = time.time()
+
+print "=== Building model with %i words." % len(input_paths)
+# Build all the base models.
+for path in input_paths:
+	word_name = os.path.split(path)[1]
+	print "== Building %r" % word_name
+	utters, model = build_model_from_dir(word_name, path)
+	models.append((utters, model, word_name))
+
+
+print "=== Cross normalizing models."
+# Do cross-normalization.
+for utters, model, word_name in models:
+	# Compute the expected log likelihood across the matching word.
+	match_ll = sum(map(model.ll, utters)) / len(utters)
+	# Compute the expected log likelihood across wrong words.
+	reject_utters = reduce(lambda x, y: x+y, [us for us, m, n in models if m != model])
+	reject_ll = sum(map(model.ll, reject_utters)) / len(reject_utters)
+	print "== %r" % word_name
+	print "match  %f (%i)" % (match_ll, len(utters))
+	print "reject %f (%i)" % (reject_ll, len(reject_utters))
+	# Compute the coefficients such that (offset + slope * ll) comes out to 0 for matches, and -100 for rejects.
+	slope = -100.0 / (reject_ll - match_ll)
+	offset = - match_ll * slope
+	print "new = %.3f + %.3f * old" % (offset, slope)
+	f = lambda x: offset + slope * x
+	print "M: %f R: %f" % (f(match_ll), f(reject_ll))
+	# Store the coefficients with the model, so they'll get written to the output file.
+	model.ll_offset = offset
+	model.ll_slope = slope
+
+print "=== Writing output file to: %r" % output_path
+with open(output_path, "w") as f:
+	for utters, model, word_name in models:
+		model.write_to_file(f)
+
+stop = time.time()
+print "Done in %f seconds." % (stop - start)
 

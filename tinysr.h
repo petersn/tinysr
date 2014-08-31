@@ -91,6 +91,7 @@ typedef struct {
 typedef struct {
 	int index;
 	char* name;
+	float ll_offset, ll_slope;
 	int model_template_length;
 	gaussian_t* model_template; 
 } recog_entry_t;

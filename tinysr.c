@@ -432,6 +432,8 @@ float compute_dynamic_time_warping(recog_entry_t* match, utterance_t* utterance)
 	}
 	float log_likelihood = dp_array[match->model_template_length-1];
 	free(dp_array);
+	// Adjust for the log likelihood offset and slope.
+	log_likelihood = match->ll_offset + match->ll_slope * log_likelihood;
 	return log_likelihood;
 }
 
@@ -462,6 +464,9 @@ int tinysr_load_model(tinysr_ctx_t* ctx, const char* path) {
 		recog_entry->name = name_str = malloc(name_length + 1);
 		free_point++;
 		READ_INTO(name_str, name_length)
+		// Read in the log likelihood offset and slope.
+		READ_INTO(&recog_entry->ll_offset, 4)
+		READ_INTO(&recog_entry->ll_slope, 4)
 		// Read in the length of model.
 		READ_INTO(&recog_entry->model_template_length, 4)
 		// Allocate memory for the model.
