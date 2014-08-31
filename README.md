@@ -2,7 +2,7 @@ TinySR: Tiny Speech Recognizer
 ==============================
 
 **TinySR** is a light weight real-time small-vocabulary speech recognizer written in portable C.
-The entire library fits in a single pair of files, `tinysr.c` and `tinysr.h`.
+The entire library fits in a single pair of files, `tinysr.c` and `tinysr.h`, with approximately 500 source lines of code.
 You can either statically link, dynamically link, or directly include the pair of files in your project, as TinySR is entirely public domain.
 No special libraries are used or dependencies required; everything is here.
 

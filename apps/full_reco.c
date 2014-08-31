@@ -39,9 +39,7 @@ int main(int argc, char** argv) {
 		size_t samples_read = fread(array, sizeof(samp_t), READ_SAMPS, stdin);
 		if (samples_read == 0) break;
 		// Feed in the samples to our recognizer.
-		tinysr_feed_input(ctx, array, (int)samples_read);
-		tinysr_detect_utterances(ctx);
-		tinysr_recognize_utterances(ctx);
+		tinysr_recognize(ctx, array, (int)samples_read);
 		int word_index;
 		float score;
 		if (state == 0 && ctx->utterance_state == 1)

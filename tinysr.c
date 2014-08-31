@@ -147,6 +147,15 @@ void tinysr_free_context(tinysr_ctx_t* ctx) {
 	free(ctx);
 }
 
+// Convenience call, that calls tinysr_feed_input, then the rest of the recognition pipeline.
+// Returns the number of pending recognition results.
+int tinysr_recognize(tinysr_ctx_t* ctx, samp_t* samples, int length) {
+	tinysr_feed_input(ctx, samples, length);
+	tinysr_detect_utterances(ctx);
+	tinysr_recognize_utterances(ctx);
+	return ctx->results_list.length;
+}
+
 // Feed in samples to the speech recognizer.
 // Performs feature extraction immediately, as frames become complete.
 void tinysr_feed_input(tinysr_ctx_t* ctx, samp_t* samples, int length) {
