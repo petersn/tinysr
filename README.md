@@ -36,15 +36,30 @@ To do recognition, all you need to do is:
 #include <stdint.h>
 #include <tinysr.h>
 
+// Allocate a context.
 tinysr_ctx_t* ctx = tinysr_allocate_context();
 ctx->input_sample_rate = 44100;
+// Load the acoustic model, which represents the vocabulary.
 tinysr_load_model(ctx, "path/to/model");
+// Process an audio buffer full of signed 16-bit little endian samples.
 tinysr_recognize(ctx, audio_buffer, num_samples);
 int word_index;
 float score;
+// Get the best matching word, and the score (higher = better) of the match.
 tinysr_get_result(ctx, &word_index, &score);
+// ctx->word_names maps vocabulary word indices to strings of their names.
 printf("Word: %s (score: %f)\n", ctx->word_names[word_index], score);
+// And, of course, free all allocated memory.
 tinysr_free_context(ctx);
+```
+
+The only expectation is that `audio_buffer` is an array of signed 16-bit little endian samples, representing the input mono audio stream.
+The sample rate of the buffer can be declared by setting `ctx->input_sample_rate` appropriately.
+By default TinySR operates in "one shot" mode, in which the entire input is assumed to be a single utterance.
+In a streaming application where utterance boundaries are not known a priori, TinySR can be switched to "free running" mode, by adding the following before the call to `tinysr_recognize`:
+
+```C
+ctx->utterance_mode = TINYSR_MODE_FREE_RUNNING;
 ```
 
 To Train
