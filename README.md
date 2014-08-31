@@ -27,6 +27,24 @@ The code is divided into the following directories:
 * `playground`: Contains non-critical throw-away programs that were written in the course of creating TinySR.
 * `scripts`: Contains utility scripts, such as for speaker training, or computing important tables of constants.
 
+The API
+-------
+
+To do recognition, all you need to do is:
+
+	#include <stdint.h>
+	#include <tinysr.h>
+
+	tinysr_ctx_t* ctx = tinysr_allocate_context();
+	ctx->input_sample_rate = 44100;
+	tinysr_load_model(ctx, "path/to/model");
+	tinysr_recognize(ctx, audio_buffer, num_samples);
+	int word_index;
+	float score;
+	tinysr_get_result(ctx, &word_index, &score);
+	printf("Word: %s (score: %f)\n", ctx->word_names[word_index], score);
+	tinysr_free_context(ctx);
+
 To Train
 --------
 
