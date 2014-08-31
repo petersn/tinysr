@@ -32,18 +32,20 @@ The API
 
 To do recognition, all you need to do is:
 
-	#include <stdint.h>
-	#include <tinysr.h>
+```C
+#include <stdint.h>
+#include <tinysr.h>
 
-	tinysr_ctx_t* ctx = tinysr_allocate_context();
-	ctx->input_sample_rate = 44100;
-	tinysr_load_model(ctx, "path/to/model");
-	tinysr_recognize(ctx, audio_buffer, num_samples);
-	int word_index;
-	float score;
-	tinysr_get_result(ctx, &word_index, &score);
-	printf("Word: %s (score: %f)\n", ctx->word_names[word_index], score);
-	tinysr_free_context(ctx);
+tinysr_ctx_t* ctx = tinysr_allocate_context();
+ctx->input_sample_rate = 44100;
+tinysr_load_model(ctx, "path/to/model");
+tinysr_recognize(ctx, audio_buffer, num_samples);
+int word_index;
+float score;
+tinysr_get_result(ctx, &word_index, &score);
+printf("Word: %s (score: %f)\n", ctx->word_names[word_index], score);
+tinysr_free_context(ctx);
+```
 
 To Train
 --------
