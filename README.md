@@ -47,7 +47,7 @@ First, run:
 
 	<audio> | ./apps/store_utters.app data/up
 
-Say the word "up" approximately one hundred times, with long enough spaces in between that the app doesn't get confused.
+Say the word "up" at least twenty times, but preferably several times as many times, with long enough spaces in between that the app doesn't get confused.
 Naturally, repeat this process for "down" into a separate directory.
 Once you're done with this, run:
 
