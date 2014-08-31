@@ -29,6 +29,7 @@ int main(int argc, char** argv) {
 	fprintf(stderr, "Allocating context.\n");
 	tinysr_ctx_t* ctx = tinysr_allocate_context();
 	ctx->input_sample_rate = 16000;
+	ctx->utterance_mode = TINYSR_MODE_FREE_RUNNING;
 	printf("Loaded up %i words.\n", tinysr_load_model(ctx, argv[1]));
 	samp_t array[READ_SAMPS];
 	keep_reading = 1;

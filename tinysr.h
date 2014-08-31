@@ -17,6 +17,11 @@ extern "C" {
 
 typedef int16_t samp_t;
 
+typedef enum {
+	TINYSR_MODE_ONE_SHOT,
+	TINYSR_MODE_FREE_RUNNING
+} tinysr_mode_t;
+
 // Generic singly linked list based stack.
 typedef struct _list_node_t {
 	void* datum;
@@ -41,6 +46,7 @@ typedef struct {
 	// The sample rate you are feeding the recognizer.
 	// It is safe to change this as frequently as you want.
 	int input_sample_rate;
+	tinysr_mode_t utterance_mode;
 
 	// Private:
 	int processed_samples;

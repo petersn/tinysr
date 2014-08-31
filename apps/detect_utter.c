@@ -32,6 +32,7 @@ int main(int argc, char** argv) {
 	fprintf(stderr, "Allocating context.\n");
 	tinysr_ctx_t* ctx = tinysr_allocate_context();
 	ctx->input_sample_rate = 16000;
+	ctx->utterance_mode = TINYSR_MODE_FREE_RUNNING;
 	samp_t array[READ_SAMPS];
 	keep_reading = 1;
 	signal(SIGINT, sig_handler);

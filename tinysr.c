@@ -74,6 +74,8 @@ tinysr_ctx_t* tinysr_allocate_context(void) {
 	ctx->resampling_time_delta = 0.0;
 	// By default, assume the input is at 48000 samples per second.
 	ctx->input_sample_rate = 48000;
+	// By default, run in one shot mode.
+	ctx->utterance_mode = TINYSR_MODE_ONE_SHOT;
 	// Offset compensation running values.
 	ctx->offset_comp_prev_in = 0.0;
 	ctx->offset_comp_prev_out = 0.0;
@@ -190,9 +192,17 @@ void tinysr_feed_input(tinysr_ctx_t* ctx, samp_t* samples, int length) {
 
 // Call to trigger utterance detection on all the accumulated frames.
 void tinysr_detect_utterances(tinysr_ctx_t* ctx) {
+	list_node_t* utterance_end;
 	// If no feature vectors have yet been produced, we can't start processing.
 	if (ctx->fv_list.length == 0)
 		return;
+	// If in one shot mode, then the entire input is an utterance, and behave appropriately.
+	if (ctx->utterance_mode == TINYSR_MODE_ONE_SHOT) {
+		ctx->utterance_start = ctx->fv_list.head;
+		utterance_end = NULL;
+		goto tinysr_detect_utterances_found_one;
+	}
+	// Otherwise, we are assumed to be in TINYSR_MODE_FREE_RUNNING, and begin utterance extraction.
 	while (1) {
 		// Try to get a new feature vector to process, either by starting up, or getting the next.
 		if (ctx->current_fv == NULL)
@@ -229,12 +239,13 @@ void tinysr_detect_utterances(tinysr_ctx_t* ctx) {
 		} else if (ctx->boredom >= UTTERANCE_STOP_LENGTH) {
 			// Now back up some frames from the end.
 			int i;
-			list_node_t* utterance_end = ctx->current_fv;
+			utterance_end = ctx->current_fv;
 			for (i = 0; i < UTTERANCE_FRAMES_DROPPED_FROM_END; i++)
 				// Note: Do an extra check to prevent the end from going before the start.
 				// This would result in the code segfaulting when it tried to pick out the utterance.
 				if (utterance_end->prev != NULL && utterance_end != ctx->utterance_start)
 					utterance_end = utterance_end->prev;
+tinysr_detect_utterances_found_one:;
 			// Count the length of the utterance, by traversing the singly linked list.
 			int utterance_length = 0;
 			list_node_t* node;
@@ -264,6 +275,14 @@ void tinysr_detect_utterances(tinysr_ctx_t* ctx) {
 			// Finally, reset our state machine.
 			ctx->utterance_start = NULL;
 			ctx->utterance_state = 0;
+			// If we jumped here from one shot mode, then make sure to clean up appropriately.
+			if (ctx->utterance_mode == TINYSR_MODE_ONE_SHOT) {
+				// Forget about every single feature vector -- they were all used up.
+				ctx->current_fv = NULL;
+				while (ctx->fv_list.length)
+					free(list_pop_front(&ctx->fv_list));
+				return;
+			}
 		}
 	}
 	// Now that we're done processing FVs for the time being, forget about old ones that no longer could
