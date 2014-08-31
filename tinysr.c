@@ -139,6 +139,8 @@ void tinysr_free_context(tinysr_ctx_t* ctx) {
 		free(recog_entry->model_template);
 		free(recog_entry);
 	}
+	// Free the word names table.
+	free(ctx->word_names);
 	// Free any results.
 	while (ctx->results_list.length)
 		free(list_pop_front(&ctx->results_list));
@@ -476,6 +478,8 @@ int tinysr_load_model(tinysr_ctx_t* ctx, const char* path) {
 		recog_entry->name = name_str = malloc(name_length + 1);
 		free_point++;
 		READ_INTO(name_str, name_length)
+		// Then make sure to null terminate!
+		name_str[name_length] = '\0';
 		// Read in the log likelihood offset and slope.
 		READ_INTO(&recog_entry->ll_offset, 4)
 		READ_INTO(&recog_entry->ll_slope, 4)
@@ -496,6 +500,7 @@ int tinysr_load_model(tinysr_ctx_t* ctx, const char* path) {
 	// Above we keep reading until we hit EOF, which causes an error, so therefore:
 	assert(0); // This should be unreachable!
 tinysr_load_model_error:
+	fclose(fp);
 	switch (free_point) {
 		case 3: free(recog_entry->model_template);
 		case 2: free(name_str);
