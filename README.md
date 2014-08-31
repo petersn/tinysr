@@ -54,6 +54,7 @@ tinysr_free_context(ctx);
 ```
 
 The only expectation is that `audio_buffer` is an array of signed 16-bit little endian samples, representing the input mono audio stream.
+(To process stereo instead, set `ctx->do_downsample`.)
 The sample rate of the buffer can be declared by setting `ctx->input_sample_rate` appropriately.
 By default TinySR operates in "one shot" mode, in which the entire input is assumed to be a single utterance.
 In a streaming application where utterance boundaries are not known a priori, TinySR can be switched to "free running" mode, by adding the following before the call to `tinysr_recognize`:
