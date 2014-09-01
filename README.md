@@ -27,6 +27,8 @@ The code is divided into the following directories:
 * `playground`: Contains non-critical throw-away programs that were written in the course of creating TinySR.
 * `scripts`: Contains utility scripts, such as for speaker training, or computing important tables of constants.
 
+![TinySR pipeline](http://web.mit.edu/snp/www/tinysr_diagram.png)
+
 The API
 -------
 
