@@ -35,7 +35,6 @@ The API
 To do recognition, all you need to do is:
 
 ```C
-#include <stdint.h>
 #include <tinysr.h>
 
 // Allocate a context.
