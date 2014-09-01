@@ -4,7 +4,7 @@ Script to produce feature vector CSVs from a wave file.
 """
 
 import wave, sys, subprocess, struct
-from os.path import join, dirname
+from os.path import join, dirname, abspath
 
 if len(sys.argv) != 3:
 	print "Usage: %s <input.wav> <output.csv>" % sys.argv[0]
@@ -32,7 +32,7 @@ for i in xrange(w.getnframes()):
 audio = "".join(audio)
 
 print "Passing to subprocess."
-compute_fv_path = join(dirname(dirname(sys.argv[0])), "apps", "compute_fv.app")
+compute_fv_path = join(dirname(dirname(abspath(sys.argv[0]))), "apps", "compute_fv.app")
 proc = subprocess.Popen([compute_fv_path, str(w.getframerate()), "/dev/stdin"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 stdout, stderr = proc.communicate(audio)
 
