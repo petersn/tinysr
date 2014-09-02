@@ -28,6 +28,7 @@ The code is divided into the following directories:
 * `apps`: Contains programs that link against `tinysr.o`. The makefile is set up to automatically compile anything matching `*.c` in `apps` against `tinysr.o`.
 * `playground`: Contains non-critical throw-away programs that were written in the course of creating TinySR.
 * `scripts`: Contains utility scripts, such as for speaker training, or computing important tables of constants.
+* `pytinysr`: Contains a compatible recognizer implemented in pure Python, using no non-standard libraries.
 
 The API
 -------
@@ -94,4 +95,9 @@ You can now test the recognizer on your model by running:
 
 The words will be printed to you based on the names of the directories containing their utterances as passed to `model_gen.py`.
 Alternatively, if you're using the library's API, the names will be available in a table, but also as unambiguous indices.
+
+Python Implementation
+---------------------
+
+Additionally, in `pytinysr` you will find `pytinysr.py`, which is a compatible implementation of TinySR in Python that can load the same acoustic model files and works identically.
 
