@@ -34,7 +34,7 @@ class TinySRContext:
 	def feed_input(self, samples):
 		# If it's a string, decode.
 		if isinstance(samples, str):
-			samples = struct.unpack("<%if" % (len(samples)/2), samples)
+			samples = struct.unpack("<%ih" % (len(samples)/2), samples)
 		# Downmix if necessary.
 		if self.do_downmix:
 			samples = map(sum, zip(*[iter(samples)]*2))
