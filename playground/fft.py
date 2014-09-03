@@ -2,14 +2,11 @@
 
 from cmath import exp, pi
 
-# FFT from rosetta code for comparison. 
 def fft(x):
-    N = len(x)
-    if N <= 1: return x
-    even = fft(x[0::2])
-    odd =  fft(x[1::2])
-    return [even[k] + exp(-2j*pi*k/N)*odd[k] for k in xrange(N/2)] + \
-           [even[k] - exp(-2j*pi*k/N)*odd[k] for k in xrange(N/2)]
+	if len(x) == 1: return x
+	e, o, c = fft(x[::2]), fft(x[1::2]), -2j*math.pi/len(x)
+	return [e[k] + math.e**(c*k) * o[k] for k in xrange(len(x)/2)] + \
+	       [e[k] - math.e**(c*k) * o[k] for k in xrange(len(x)/2)]
 
 # Naive DFT, for making sure my numerics come out exactly the same.
 def ft(x):
