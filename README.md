@@ -96,9 +96,24 @@ You can now test the recognizer on your model by running:
 The words will be printed to you based on the names of the directories containing their utterances as passed to `model_gen.py`.
 Alternatively, if you're using the library's API, the names will be available in a table, but also as unambiguous indices.
 
+Finally, some advice on building models.
+If your goal is some degree of speaker independence, then I recommend that you produce separate male and female models for each word.
+TinySR doesn't (yet) implement VTLN, so it's really crucial to get some good vocal tract length coverage across your training corpus.
+Mixing the male and female speakers together during training works too, but greatly increases the variance of the Gaussians in the model.
+
 Python Implementation
 ---------------------
 
 **(Incomplete)**
 Additionally, in `pytinysr` you will find `pytinysr.py`, which is a compatible implementation of TinySR in Python that can load the same acoustic model files and works identically.
+
+To Do
+-----
+
+Some features I'm aiming for, or considering.
+Drop me a line if you'd like to see one of these done sooner.
+
+* Vocal Tract Length Normalization (VTLN).
+* True Gaussian Mixture Models, with EM training, instead of the current single Gaussians. (Will make training much slower.)
+* Maybe a 32-bit integer fixed precision only implementation for ARMs without FPUs?
 
