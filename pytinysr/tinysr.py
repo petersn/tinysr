@@ -17,6 +17,12 @@ class TinySRContext:
 	BIN_CENTERS = [2, 5, 8, 11, 14, 18, 23, 27, 33, 38, 45, 52, 60, 69, 79, 89, 101, 115, 129, 145, 163, 183, 205, 229, 256]
 	ONE_SHOT = "one-shot"
 	FREE_RUNNING = "free-running"
+	UTTERANCE_START_ENERGY_THRESHOLD = 5.0
+	UTTERANCE_STOP_ENERGY_THRESHOLD = 2.5
+	UTTERANCE_START_LENGTH = 4
+	UTTERANCE_STOP_LENGTH = 10
+	UTTERANCE_FRAMES_BACKED_UP = 8
+	UTTERANCE_FRAMES_DROPPED_FROM_END = 7
 
 	def __init__(self):
 		self.input_sample_rate = 48000
@@ -30,6 +36,7 @@ class TinySRContext:
 		self.fvs = []
 		self.utterances = []
 		self.utterance_mode = self.ONE_SHOT
+		self.
 
 	def feed_input(self, samples):
 		# If it's a string, decode.
@@ -75,5 +82,7 @@ class TinySRContext:
 	def detect_utterances(self):
 		if not self.fvs: return
 		if self.utterance_mode == self.ONE_SHOT:
-			self.utterances.append
+			self.utterances.append([fv[2] for fv in self.fvs])
+			self.fvs = []
+			return
 
