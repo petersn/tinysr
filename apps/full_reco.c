@@ -41,14 +41,14 @@ int main(int argc, char** argv) {
 		if (samples_read == 0) break;
 		// Feed in the samples to our recognizer.
 		tinysr_recognize(ctx, array, (int)samples_read);
-		int word_index;
-		float score;
 		if (state == 0 && ctx->utterance_state == 1)
 			printf("Utterance detected.\n");
 		if (state == 1 && ctx->utterance_state == 0)
 			printf("Utterance over.\n");
 		state = ctx->utterance_state;
 		// Get back results.
+		int word_index;
+		float score;
 		while (tinysr_get_result(ctx, &word_index, &score))
 			printf("=== %s (%.3f)\n", ctx->word_names[word_index], score);
 	}
