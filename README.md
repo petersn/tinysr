@@ -11,7 +11,7 @@ No special libraries are used or dependencies required; everything is here.
 The goal is to provide the following features:
 * Lean, readable source with absolutely no dependencies beyond the C standard library.
 * Very easy API for both real-time and one-shot recognition.
-* Real-time low latency performance, and utterance detection.
+* Real-time low latency performance.
 * User friendly vocabulary training.
 
 Currently the recognition pipeline looks like:
@@ -115,5 +115,7 @@ Drop me a line if you'd like to see one of these done sooner.
 
 * Vocal Tract Length Normalization (VTLN).
 * True Gaussian Mixture Models, with EM training, instead of the current single Gaussians. (Will make training much slower.)
+* Differential features.
+* Word error rate benchmarking app, for model validation.
 * Maybe a 32-bit integer fixed precision only implementation for ARMs without FPUs?
 
