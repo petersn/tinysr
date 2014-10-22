@@ -1,5 +1,6 @@
 TinySR: Tiny Speech Recognizer
 ==============================
+[![Gitter](https://badges.gitter.im/Join Chat.svg)](https://gitter.im/petersn/tinysr?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 ![TinySR pipeline](http://web.mit.edu/snp/www/tinysr_diagram.png)
 
