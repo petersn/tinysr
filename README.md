@@ -10,7 +10,7 @@ No special libraries are used or dependencies required; everything is here.
 
 The goal is to provide the following features:
 * Lean, readable source with absolutely no dependencies beyond the C standard library.
-* Very easy API for both real-time and one-shot recognition.
+* Very easy API for recognition -- only five function calls required to do recognition! (Allocate, load model, pass in input, get out results, free.)
 * Real-time low latency performance.
 * User friendly vocabulary training.
 
