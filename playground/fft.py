@@ -42,4 +42,3 @@ O = [None] * len(D)
 my_fft(D, 0, 1, len(D), O)
 print O
 
-

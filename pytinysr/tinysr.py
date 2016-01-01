@@ -11,6 +11,10 @@ def fft(x):
 	return [e[k] + math.e**(c*k) * o[k] for k in xrange(len(x)/2)] + \
 	       [e[k] - math.e**(c*k) * o[k] for k in xrange(len(x)/2)]
 
+class FeatureVector:
+	def __init__(self, noise_foor_estimate, log_energy, cepstrum, number):
+		self.noise_foor_estimate, self.log_energy, self.cepstrum, self.number = noise_foor_estimate, log_energy, cepstrum, number
+
 class TinySRContext:
 	FRAME_LENGTH = 400
 	FFT_LENGTH = 512
@@ -33,13 +37,16 @@ class TinySRContext:
 		self.offset_comp_prev_in = 0.0
 		self.offset_comp_prev_out = 0.0
 		self.noise_floor_estimate = 100.0
-		self.fvs = []
+		self.feature_vectors = []
+		self.next_fv_number = 1
+		self.accumulated_utterance = []
 		self.utterances = []
 		self.utterance_mode = self.ONE_SHOT
-		self.
+		self.excitement = 0.0
 
 	def feed_input(self, samples):
-		# If it's a string, decode.
+		# If it's a string, decode as signed little endian 16-bit audio.
+		# NB: If you don't want this assumption to be made, then unpack into integers yourself!
 		if isinstance(samples, str):
 			samples = struct.unpack("<%ih" % (len(samples)/2), samples)
 		# Downmix if necessary.
@@ -77,12 +84,16 @@ class TinySRContext:
 		bins = [math.log(i + 2e-22) for i in bins]
 		cepstrum = [sum(math.cos(math.pi * i * (j + 0.5) / 23.0) * v for j, v in enumerate(bins)) for i in xrange(13)]
 		self.noise_floor_estimate = min(log_energy, 0.999 * self.noise_floor_estimate + 0.001 * log_energy)
-		self.fvs.append((noise_foor_estimate, log_energy, cepstrum))
+		feature_vector = FeatureVector(noise_foor_estimate, log_energy, cepstrum, self.next_fv_number)
+		self.next_fv_number += 1
+		self.feature_vectors.append(feature_vector)
 
 	def detect_utterances(self):
-		if not self.fvs: return
+		if not self.feature_vectors: return
 		if self.utterance_mode == self.ONE_SHOT:
-			self.utterances.append([fv[2] for fv in self.fvs])
-			self.fvs = []
+			self.utterances.append([fv.cepstrum for fv in self.feature_vectors])
+			self.feature_vectors = []
 			return
+		# Otherwise, continue accumulating an utterance.
+
 

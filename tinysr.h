@@ -151,6 +151,8 @@ utterance_t* read_feature_vector_csv(const char* path);
 // buffer is full, so you should never have to call it yourself.
 void tinysr_process_frame(tinysr_ctx_t* ctx);
 
+void tinysr_recognize_utterance(tinysr_ctx_t* ctx, utterance_t* utterance);
+
 float gaussian_log_likelihood(gaussian_t* gauss, feature_vector_t* fv);
 float compute_dynamic_time_warping(recog_entry_t* match, utterance_t* utterance);
 

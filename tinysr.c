@@ -304,29 +304,34 @@ tinysr_detect_utterances_found_one:;
 		free(list_pop_front(&ctx->fv_list));
 }
 
+// Recognize one specific utterance.
+void tinysr_recognize_utterance(tinysr_ctx_t* ctx, utterance_t* utter) {
+	int best_index = -1;
+	// Again, I'd like to set this to negative inf, but it's hard to do that portably. :(
+	float best_score = -1e30;
+	// Match the utterance against all current recognition entries.
+	list_node_t* re = ctx->recog_entry_list.head;
+	while (re != NULL) {
+		float new_score = compute_dynamic_time_warping(re->datum, utter);
+		if (new_score > best_score) {
+			best_index = ((recog_entry_t*)re->datum)->index;
+			best_score = new_score;
+		}
+		re = re->next;
+	}
+	// We've found a winner!
+	result_t* result = malloc(sizeof(result_t));
+	result->word_index = best_index;
+	result->score = best_score;
+	list_append_back(&ctx->results_list, result);
+}
+
 // Call to trigger recognition on detected utterances.
 void tinysr_recognize_utterances(tinysr_ctx_t* ctx) {
 	while (ctx->utterance_list.length) {
 		// Read in one utterance at a time.
 		utterance_t* utter = list_pop_front(&ctx->utterance_list);
-		int best_index = -1;
-		// Again, I'd like to set this to negative inf, but it's hard to do that portably. :(
-		float best_score = -1e30;
-		// Match the utterance against all current recognition entries.
-		list_node_t* re = ctx->recog_entry_list.head;
-		while (re != NULL) {
-			float new_score = compute_dynamic_time_warping(re->datum, utter);
-			if (new_score > best_score) {
-				best_index = ((recog_entry_t*)re->datum)->index;
-				best_score = new_score;
-			}
-			re = re->next;
-		}
-		// We've found a winner!
-		result_t* result = malloc(sizeof(result_t));
-		result->word_index = best_index;
-		result->score = best_score;
-		list_append_back(&ctx->results_list, result);
+		tinysr_recognize_utterance(ctx, utter);
 		free(utter->feature_vectors);
 		free(utter);
 	}

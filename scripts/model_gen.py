@@ -150,7 +150,6 @@ for path in input_paths:
 	utters, model = build_model_from_dir(word_name, path)
 	models.append((utters, model, word_name))
 
-
 print "=== Cross normalizing models."
 # Do cross-normalization.
 for utters, model, word_name in models:
