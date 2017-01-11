@@ -6,7 +6,7 @@ APPS := $(patsubst %.c,%,$(APP_SOURCES))
 
 all: $(APPS)
 
-apps/%: %.c tinysr.o
+apps/%: apps/%.c tinysr.o
 	gcc -o $@ $< tinysr.o $(CFLAGS)
 
 .PHONY: clean
