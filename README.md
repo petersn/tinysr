@@ -1,7 +1,7 @@
 TinySR: Tiny Speech Recognizer
 ==============================
 
-![TinySR pipeline](http://web.mit.edu/snp/www/tinysr_diagram.png)
+![TinySR pipeline](https://github.com/petersn/tinysr/blob/master/docs/prerendered_diagram.png?raw=true)
 
 **TinySR** is a light weight real-time small-vocabulary speech recognizer written in portable C.
 The entire library fits in a single pair of files, `tinysr.c` and `tinysr.h`, with approximately 500 source lines of code.
@@ -22,7 +22,7 @@ Currently the recognition pipeline looks like:
 * Dynamic Time Warping to match against the vocabulary.
 
 If you use my code, I'd love it if you dropped me a line at <snp@mit.edu>.
-There's a LaTeX file in `docs` describing how TinySR works, and the compiled PDF is here: http://www.mit.edu/~snp/tinysr.pdf
+There's a LaTeX file in `docs` describing how TinySR works, and the compiled PDF is here: https://github.com/petersn/tinysr/blob/master/docs/tinysr.pdf
 
 The code is divided into the following directories:
 * `apps`: Contains programs that link against `tinysr.o`. The makefile is set up to automatically compile anything matching `*.c` in `apps` against `tinysr.o`.
